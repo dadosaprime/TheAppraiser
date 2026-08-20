@@ -1,51 +1,50 @@
-# TheAppraiser
+# Adjustment Support Tool
 
-Open tooling for residential real estate appraisal analysis.
+Free, open-source adjustment support for residential appraisers — runs entirely
+inside [Claude](https://claude.ai). No installs, no subscriptions, no data leaves
+your chat.
 
-## FullPackageRunner.md
+Drop the tool file and your MLS CSV exports into a Claude chat, paste one
+command, and it:
 
-A single self-contained instruction file that takes four MLS CSV exports and produces a complete adjustment support package:
+1. Measures market conditions several independent ways (the rate can be positive
+   or negative — the tool reports facts, not verdicts)
+2. Runs a multi-method adjustment engine — regression family, GAM, paired sales,
+   grouped data, sensitivity — on every grid line the data supports, on every
+   data cut, with visible screens and reasons
+3. Shows the **Adjustment Reconciliation**: the Analysis Result Range for each
+   line (Low / Median / High) with an **Appraiser's Adjustment** box — you enter
+   every figure yourself; there is no auto-select
+4. Delivers one ZIP: Neighborhood & Market Analysis, Market Conditions,
+   Adjustment Support Comments, Method Definitions, DISCLOSURES, a fully
+   traceable calculations workbook, and eight market charts
 
-- **Market conditions (time) analysis** — regression across nested market cuts, with a resolution threshold and a sign-stability test
-- **Eight market scatter charts** — price, price per square foot, months of supply, days on market, concessions, contribution, absorption, sales count
-- **Neighborhood and market analysis** — six-section narrative
-- **Adjustment derivation** — twenty-plus methods across two tiers, screened for direction and dispersion
-- **Adjustment support commentary** and a **methods workbook** with live Excel formulas
+**The tool determines nothing.** It reports the range indicated by the market
+under the methods utilized. Every adjustment is selected by the appraiser, typed
+into the report by the appraiser, and supported in the appraiser's workfile.
+Read `DISCLOSURES` in every output ZIP.
 
-### The design rule that matters most
+## Files
 
-**The software produces the range. The appraiser produces the adjustment.**
+| File | What it is |
+|---|---|
+| `Adjustment Support Tool v[date].md` | The tool. Use the newest date. |
+| `INSTRUCTIONS.md` | Start here — written for first-time Claude users |
+| `MLS Export Field Guide.md` | Which MLS fields to include in your export, and why |
+| `MLS Setup Tool v[date].md` | Run once if you're not on Stellar MLS — builds a profile so the tool reads your MLS |
 
-The file computes ranges. It never selects an adjustment. There is no automatic mode, no default-to-median mode, and no fast path — the appraiser is asked on every grid line, on every assignment, every time. The appraiser signs the report, so the appraiser develops the number. Rule 0 exists to keep it that way and to stop anyone from optimizing it away later.
+## Quick start
 
-### What it will not do
+1. Read `INSTRUCTIONS.md` (five minutes).
+2. Export your CSVs per the `MLS Export Field Guide`.
+3. Drag the tool file + your CSVs into a Claude chat, paste the command from
+   Part One of the tool, fill in the address and effective date.
+4. Answer the Reconciliation. Download the ZIP.
 
-- Estimate a cost figure without a cost source
-- Continue past an unreadable input file
-- Apply a market conditions rate that failed its own significance test
-- Fabricate a spreadsheet formula check it cannot actually compute
-- Carry any figure over from a prior report
+Built and tested on Stellar MLS (Matrix). Other MLS systems: run the
+`MLS Setup Tool` once first.
 
-### Using it
+## Versioning
 
-Drop the file into a Claude project, attach the four exports, and paste the command block at the top of the file.
-
-The MLS column names are from SPARK/StellarMLS. On a different MLS, remap the field table in Phase 1 — the analysis itself does not change.
-
-### Scope
-
-Residential. USPAP-aware. Written for Florida practice but the methodology is not state specific.
-
-It does not write the sales comparison narrative — that needs the completed grid and is a separate step.
-
-### Verification
-
-Every tolerance, formula and format was run end to end on a live assignment before release. The example figures in the traps section come from that run. No property is identified and no client, lender or borrower information appears anywhere in the file.
-
-### License
-
-MIT. Use it, fork it, adapt it to your market.
-
-### A note on the traps section
-
-The known-traps list is the part worth reading even if you never run the file. Each entry is a real failure caught in production, not a hypothetical — a new construction premium hiding inside an age variable, a half bath measuring a floor plan instead of a bathroom, uncontrolled methods inflating correlated features by 8x. Those are the ways an automated adjustment run goes quietly wrong.
+Tool files are dated (`v2026-08-19`). The date is the build date and the version
+history — newer date supersedes older. Nothing else to track.
