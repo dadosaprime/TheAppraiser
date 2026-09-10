@@ -49,7 +49,8 @@ local BASE_COOLDOWN: { [string]: number } = {
 
 -- Soul cost per role. The basic attack is free (mundane); supernatural
 -- abilities draw from the pool. The Werewolf's shift and claws are free here
--- because the shift runs on Fury. PLACEHOLDER — tune in playtest.
+-- because the shift's price is a locked slice of the pool instead (see
+-- SoulService.lock). PLACEHOLDER — tune in playtest.
 local SOUL_COST: { [string]: number } = {
 	["basic attack"] = 0,
 	["basic attack + sustain"] = 0,

@@ -36,7 +36,7 @@ export type Class = {
 	baseSoulPool: number,
 	trees: { string }, -- ordered tree ids, slots 1..5
 	attackTree: string, -- the tree left-click fires (the class's basic attack)
-	resource: string, -- "SoulPool" | "Fury" | ... resource the class spends
+	resource: string, -- "SoulPool" (every class; the Werewolf shift LOCKS a slice of it)
 }
 
 -- A player's live progression state (persisted).
