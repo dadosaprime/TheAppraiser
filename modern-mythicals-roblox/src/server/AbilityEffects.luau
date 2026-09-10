@@ -429,7 +429,8 @@ local function morphShift(ctx: Ctx, assetId: number): number?
 		Effects.flash(root, BEAST, 4, 18, 0.8)
 		Effects.burst(root.Position, BEAST, 6, 0.4)
 	end
-	task.delay(12 + 4 * ctx.rank, function()
+	local duration = if GameConfig.Playtest.WerewolfStartsShifted then math.huge else 12 + 4 * ctx.rank
+	task.delay(duration, function()
 		if morphs[ctx.player] and morphs[ctx.player].wolf == wolf then
 			revertMorph(ctx.player)
 		end
@@ -561,7 +562,8 @@ AbilityEffects.TheTurning = function(ctx)
 	Effects.flash(ctx.root, BEAST, 4, 18, 0.8)
 	Effects.burst(ctx.root.Position, BEAST, 6, 0.4)
 
-	setTimed(ctx, "shift", 12 + 4 * rank, function()
+	local duration = if GameConfig.Playtest.WerewolfStartsShifted then math.huge else 12 + 4 * rank
+	setTimed(ctx, "shift", duration, function()
 		for _, e in extras do
 			e:Destroy()
 		end

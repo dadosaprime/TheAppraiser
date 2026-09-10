@@ -54,7 +54,7 @@ function HUD.build()
 
 	local hint = makeLabel(
 		gui,
-		"Click / 1 attack   ·   2–5 abilities   ·   Shift+1–5 buy rank   ·   B buy Soul box",
+		"Click = attack   ·   1–5 abilities   ·   Shift+1–5 buy rank   ·   B buy Soul box",
 		UDim2.fromScale(0.25, 0.905),
 		UDim2.fromScale(0.5, 0.03)
 	)
@@ -107,7 +107,8 @@ function HUD.update(profile: any)
 		local tree = treeId and PerkTrees.get(treeId)
 		local owned = treeId and (profile.perks[treeId] or 0) or 0
 		if tree then
-			slotButtons[slot].Text = ("%d  %s\nrank %d/%d"):format(slot, tree.ability, owned, PerkTrees.MAX_RANK)
+			local tag = if class and treeId == class.attackTree then "🖱 " else ""
+			slotButtons[slot].Text = ("%d  %s%s\nrank %d/%d"):format(slot, tag, tree.ability, owned, PerkTrees.MAX_RANK)
 			slotButtons[slot].TextColor3 = if owned > 0 then Color3.fromRGB(230, 225, 240) else Color3.fromRGB(120, 115, 135)
 		else
 			slotButtons[slot].Text = tostring(slot)

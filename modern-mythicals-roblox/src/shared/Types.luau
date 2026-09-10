@@ -35,6 +35,7 @@ export type Class = {
 	baseHealth: number,
 	baseSoulPool: number,
 	trees: { string }, -- ordered tree ids, slots 1..5
+	attackTree: string, -- the tree left-click fires (the class's basic attack)
 	resource: string, -- "SoulPool" | "Fury" | ... resource the class spends
 }
 

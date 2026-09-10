@@ -69,6 +69,8 @@ Net.get("ChooseClass").OnServerInvoke = function(player, classId)
 		local class = Classes.get(classId)
 		if class then
 			profile.perks[class.trees[1]] = math.max(profile.perks[class.trees[1]] or 0, 1)
+			-- ...and the basic attack, when it lives on another slot (Werewolf claws).
+			profile.perks[class.attackTree] = math.max(profile.perks[class.attackTree] or 0, 1)
 		end
 		-- Playtest: seed shards so progression can be exercised immediately.
 		profile.soulShards += GameConfig.Playtest.StartingShards
@@ -95,12 +97,22 @@ Net.get("PurchasePerk").OnServerInvoke = function(player, treeId)
 end
 
 Net.get("ActivateAbility").OnServerEvent:Connect(function(player, payload)
-	if type(payload) ~= "table" or type(payload.slot) ~= "number" then
+	if type(payload) ~= "table" then
 		return
 	end
-	local result = AbilityService.activate(player, payload.slot, payload.aimPoint)
+	local slot = payload.slot
+	if payload.attack == true then
+		-- Left-click: the class's basic attack, whichever slot holds it.
+		local profile = DataService.get(player)
+		local class = profile and profile.class and Classes.get(profile.class)
+		slot = if class then table.find(class.trees, class.attackTree) else nil
+	end
+	if type(slot) ~= "number" then
+		return
+	end
+	local result = AbilityService.activate(player, slot, payload.aimPoint)
 	Net.get("AbilityFeedback"):FireClient(player, {
-		slot = payload.slot,
+		slot = slot,
 		ok = result.ok,
 		err = result.err,
 		cooldown = result.cooldown,
@@ -115,6 +127,13 @@ local function onCharacter(player: Player, character: Model)
 	character.Destroying:Connect(function()
 		CombatService.unregister(character)
 	end)
+	if GameConfig.Playtest.WerewolfStartsShifted and profile and profile.class == "Werewolf" then
+		task.delay(1, function()
+			if character.Parent and player.Character == character then
+				AbilityService.activate(player, 1, nil)
+			end
+		end)
+	end
 end
 
 local function onPlayer(player: Player)

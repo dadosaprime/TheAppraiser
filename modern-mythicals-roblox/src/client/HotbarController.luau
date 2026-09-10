@@ -91,12 +91,14 @@ function HotbarController.start()
 		if gameProcessed then
 			return
 		end
-		local slot = KEY_TO_SLOT[input.KeyCode]
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			slot = 1 -- left click = basic attack
+			-- Left click = the class's basic attack (server resolves which slot).
+			activate:FireServer({ attack = true, aimPoint = aimPoint() })
+			return
 		end
+		local slot = KEY_TO_SLOT[input.KeyCode]
 		if slot then
-			if shiftHeld() and input.UserInputType == Enum.UserInputType.Keyboard then
+			if shiftHeld() then
 				task.spawn(purchasePerkForSlot, slot)
 			else
 				-- Aim at the point under the cursor; the server validates it.

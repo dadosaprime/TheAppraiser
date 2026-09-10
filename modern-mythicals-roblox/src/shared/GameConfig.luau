@@ -40,6 +40,9 @@ GameConfig.Playtest = {
 	-- Granted once when a class is first chosen, so box/perk purchasing can be
 	-- exercised before real shard income (kills, quests) exists. PLACEHOLDER.
 	StartingShards = 25000,
+	-- Werewolves spawn already shifted and the shift never expires (toggle
+	-- still works). Off = human form is the wind-up, per the design doc.
+	WerewolfStartsShifted = false,
 }
 
 -- ── Spawning (rotating hot zones) ──────────────────────────────────────────

@@ -17,6 +17,7 @@ local Classes: { [Types.ClassId]: Types.Class } = {
 		resource = "SoulPool",
 		-- slots 1..5
 		trees = { "Emberhand", "Conflagration", "WitchfireAegis", "SigilCraft", "Widdershins" },
+		attackTree = "Emberhand",
 	},
 
 	Werewolf = {
@@ -31,6 +32,8 @@ local Classes: { [Types.ClassId]: Types.Class } = {
 		-- not Soul Pool. This is the only class whose resource rewards staying in the fight.
 		resource = "Fury",
 		trees = { "TheTurning", "RedRend", "HuntersHowl", "BloodScent", "CragClimb" },
+		-- Slot 1 is the shift, not an attack: left-click swings the claws instead.
+		attackTree = "RedRend",
 	},
 
 	Vampire = {
@@ -43,6 +46,7 @@ local Classes: { [Types.ClassId]: Types.Class } = {
 		baseSoulPool = SoulRanks.BASE_SOUL_POOL,
 		resource = "SoulPool",
 		trees = { "RedThirst", "DreadCharm", "Nightspeed", "Mist", "TheCrawl" },
+		attackTree = "RedThirst",
 	},
 
 	Frankenstein = {
@@ -55,6 +59,7 @@ local Classes: { [Types.ClassId]: Types.Class } = {
 		baseSoulPool = SoulRanks.BASE_SOUL_POOL,
 		resource = "SoulPool",
 		trees = { "TheSpark", "Overload", "VitalSpark", "BreakersTouch", "ArcStep" },
+		attackTree = "TheSpark",
 	},
 
 	Immortal = {
@@ -67,6 +72,7 @@ local Classes: { [Types.ClassId]: Types.Class } = {
 		baseSoulPool = SoulRanks.BASE_SOUL_POOL,
 		resource = "SoulPool",
 		trees = { "Swordwork", "Riposte", "Stillness", "FirstCut", "Undying" },
+		attackTree = "Swordwork",
 	},
 }
 
