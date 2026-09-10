@@ -45,6 +45,12 @@ def generate(config_path: str, out_path: str, use_osm: bool = False) -> int:
         ):
             place.add(part)
 
+    # Beach-walk lamps along the sand line so the spawn area reads at night.
+    for part in facade_kit.build_streetlights(
+        "BEACHWALK", config.roads["COLLINS"].z - 190, config.strip_length, 0, 150, (255, 235, 200), 2.6
+    ):
+        place.add(part)
+
     # Beach ground slab (east of Collins).
     place.add(
         Part(

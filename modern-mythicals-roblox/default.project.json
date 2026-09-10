@@ -66,13 +66,20 @@
 						1,
 						12
 					],
-					"Position": [
-						900,
-						0.5,
-						-300
-					],
 					"Duration": 0,
-					"Neutral": true
+					"Neutral": true,
+					"CFrame": {
+						"position": [
+							900,
+							0.5,
+							-60
+						],
+						"orientation": [
+							0,
+							180,
+							0
+						]
+					}
 				}
 			},
 			"Map": {
@@ -86,14 +93,14 @@
 				"ClockTime": 0,
 				"Brightness": 3,
 				"Ambient": [
-					0.36,
-					0.36,
-					0.46
+					0.5,
+					0.5,
+					0.62
 				],
 				"OutdoorAmbient": [
-					0.46,
-					0.5,
-					0.64
+					0.56,
+					0.6,
+					0.76
 				],
 				"ColorShift_Top": [
 					0.78,
@@ -104,22 +111,22 @@
 				"ShadowSoftness": 0.2,
 				"EnvironmentDiffuseScale": 0.3,
 				"EnvironmentSpecularScale": 0.6,
-				"ExposureCompensation": 0.9
+				"ExposureCompensation": 1.0
 			},
 			"Atmosphere": {
 				"$className": "Atmosphere",
 				"$properties": {
-					"Density": 0.2,
+					"Density": 0.16,
 					"Offset": 0.25,
 					"Color": [
-						0.66,
 						0.7,
-						0.85
+						0.74,
+						0.9
 					],
 					"Decay": [
-						0.24,
-						0.27,
-						0.39
+						0.35,
+						0.38,
+						0.52
 					],
 					"Glare": 0.5,
 					"Haze": 2
