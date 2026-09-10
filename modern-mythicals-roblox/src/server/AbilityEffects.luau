@@ -18,6 +18,8 @@ local AssetIds = require(Shared.AssetIds)
 
 local Effects = require(script.Parent.Effects)
 local CombatService = require(script.Parent.CombatService)
+local ProgressionService = require(script.Parent.ProgressionService)
+local SpawnService = require(script.Parent.SpawnService)
 
 export type Ctx = {
 	player: Player,
@@ -48,11 +50,13 @@ local function candidates(): { Model }
 			table.insert(list, p.Character)
 		end
 	end
-	local dummies = Workspace:FindFirstChild("Dummies")
-	if dummies then
-		for _, m in dummies:GetChildren() do
-			if m:IsA("Model") then
-				table.insert(list, m)
+	for _, folderName in { "Dummies", "Enemies" } do
+		local f = Workspace:FindFirstChild(folderName)
+		if f then
+			for _, m in f:GetChildren() do
+				if m:IsA("Model") then
+					table.insert(list, m)
+				end
 			end
 		end
 	end
@@ -145,6 +149,24 @@ local function hit(target: Model, amount: number, dmgType: string, attacker: Mod
 	local p = modelPos(target)
 	if p then
 		Effects.damageNumber(p, applied, color)
+	end
+	-- A kill pays Soul Shards to the player who landed it (once).
+	if hum.Health <= 0 then
+		local reward = target:GetAttribute("ShardReward")
+		if typeof(reward) == "number" and reward > 0 then
+			target:SetAttribute("ShardReward", nil)
+			local killer = Players:GetPlayerFromCharacter(attacker)
+			if killer then
+				ProgressionService.awardShards(killer, reward)
+				if p then
+					Effects.damageNumber(p + Vector3.new(0, 2, 0), reward, Color3.fromRGB(255, 215, 90))
+				end
+			end
+			local zone = target:GetAttribute("Zone")
+			if typeof(zone) == "string" then
+				SpawnService.reportKill(zone)
+			end
+		end
 	end
 	return applied
 end

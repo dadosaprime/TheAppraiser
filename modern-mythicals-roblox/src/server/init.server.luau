@@ -22,12 +22,14 @@ local CombatService = require(script.CombatService)
 local SpawnService = require(script.SpawnService)
 local TerrainGenerator = require(script.TerrainGenerator)
 local TrainingDummies = require(script.TrainingDummies)
+local StreetGang = require(script.StreetGang)
 
 -- ── Start services ──────────────────────────────────────────────────────────
 DataService.init()
 SpawnService.init()
 TerrainGenerator.init()
 TrainingDummies.init()
+StreetGang.init()
 
 -- ── Push helpers: send fresh profile to a client ────────────────────────────
 local function pushProfile(player: Player, profile: any)
