@@ -1,0 +1,65 @@
+{
+	"name": "ModernMythicals",
+	"globIgnorePaths": ["**/*.spec.luau"],
+	"tree": {
+		"$className": "DataModel",
+
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"Shared": {
+				"$path": "src/shared"
+			},
+			"Packages": {
+				"$path": "Packages",
+				"$optional": true
+			}
+		},
+
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"Server": {
+				"$path": "src/server"
+			},
+			"ServerPackages": {
+				"$path": "ServerPackages",
+				"$optional": true
+			}
+		},
+
+		"StarterPlayer": {
+			"$className": "StarterPlayer",
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"Client": {
+					"$path": "src/client"
+				}
+			}
+		},
+
+		"Workspace": {
+			"$className": "Workspace",
+			"$properties": {
+				"StreamingEnabled": true,
+				"StreamingTargetRadius": 1024,
+				"FilteringEnabled": true
+			}
+		},
+
+		"Lighting": {
+			"$className": "Lighting",
+			"$properties": {
+				"ClockTime": 0,
+				"Brightness": 1,
+				"GlobalShadows": true,
+				"Technology": "Future"
+			}
+		},
+
+		"SoundService": {
+			"$className": "SoundService",
+			"$properties": {
+				"RespectFilteringEnabled": true
+			}
+		}
+	}
+}

@@ -1,0 +1,20 @@
+[package]
+name = "dadosaprime/modern-mythicals"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+license = "UNLICENSED"
+
+[dependencies]
+# Networking + signals. Swap/extend as the netcode firms up.
+Signal = "sleitnick/signal@2.0.1"
+
+[server-dependencies]
+# Session-locked player data. The design doc calls for DataStore persistence;
+# ProfileService is the community-standard safe wrapper (session locking, autosave,
+# reconciliation). DataService.luau is written to sit on top of this.
+ProfileService = "madstudioroblox/profileservice@1.4.0"
+
+[dev-dependencies]
+# TestEZ for unit specs runnable via Lune / Open Cloud Luau Execution.
+TestEZ = "roblox/testez@0.4.1"

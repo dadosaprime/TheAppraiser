@@ -1,0 +1,6 @@
+std = "roblox"
+
+[rules]
+# Data modules intentionally declare large literal tables.
+empty_if = "warn"
+unused_variable = "warn"
