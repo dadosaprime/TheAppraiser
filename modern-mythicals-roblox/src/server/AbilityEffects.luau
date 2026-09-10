@@ -340,7 +340,7 @@ local function shiftAsset(): (string?, number?)
 	end
 	local m = raw:match("(%d+)$")
 	if m then
-		return "model", tonumber(m)
+		return "asset", tonumber(m) -- rig model or avatar accessory; detected on load
 	end
 	return nil, nil
 end
@@ -369,31 +369,66 @@ local function bundleDescription(bundleId: number): HumanoidDescription?
 	return nil
 end
 
--- Model morph: the player's character is REPLACED by a clone of a rigged model
--- for the duration, then the original character is restored in place.
-local wolfTemplate: Model? = nil
-local function loadWolfTemplate(assetId: number): Model?
-	if wolfTemplate then
-		return wolfTemplate
+-- Load the configured asset once and work out what it is:
+--   a Humanoid rig   → morph the player into a clone of it
+--   Accessory(s)     → wear them on the player's own avatar (costume)
+local loadedKind: string? = nil
+local loadedRig: Model? = nil
+local loadedAccessories: { Accessory } = {}
+local loadAttempted = false
+
+local function loadShiftAsset(assetId: number): (string?, any)
+	if loadAttempted then
+		return loadedKind, if loadedKind == "rig" then loadedRig else loadedAccessories
 	end
+	loadAttempted = true
 	local ok, container = pcall(function()
 		return InsertService:LoadAsset(assetId)
 	end)
 	if not ok or not container then
-		warn("[Shift] could not load model", assetId, container)
-		return nil
+		warn("[Shift] could not load asset", assetId, container)
+		return nil, nil
 	end
-	local model = container:FindFirstChildWhichIsA("Model", true)
-	if model and model:FindFirstChildOfClass("Humanoid") and model:FindFirstChild("HumanoidRootPart") then
-		model.Parent = nil
+	local rig = container:FindFirstChildWhichIsA("Model", true)
+	if rig and rig:FindFirstChildOfClass("Humanoid") and rig:FindFirstChild("HumanoidRootPart") then
+		rig.Parent = nil
 		container:Destroy()
-		wolfTemplate = model
-		return model
+		loadedKind, loadedRig = "rig", rig
+		print("[Shift] asset", assetId, "is a Humanoid rig — morphing on shift")
+		return loadedKind, loadedRig
 	end
-	warn("[Shift] model", assetId, "is not a Humanoid rig (needs Humanoid + HumanoidRootPart)")
+	for _, d in container:GetDescendants() do
+		if d:IsA("Accessory") then
+			table.insert(loadedAccessories, d)
+		end
+	end
+	if #loadedAccessories > 0 then
+		loadedKind = "accessories"
+		print("[Shift] asset", assetId, "is", #loadedAccessories, "accessory(ies) — wearing on shift")
+		return loadedKind, loadedAccessories
+	end
+	warn("[Shift] asset", assetId, "is neither a Humanoid rig nor an Accessory; using procedural beast")
 	container:Destroy()
-	return nil
+	return nil, nil
 end
+
+-- Layered-clothing accessory types deform to the body; everything else is rigid.
+local LAYERED: { [Enum.AccessoryType]: boolean } = {
+	[Enum.AccessoryType.Jacket] = true,
+	[Enum.AccessoryType.Sweater] = true,
+	[Enum.AccessoryType.Shirt] = true,
+	[Enum.AccessoryType.TShirt] = true,
+	[Enum.AccessoryType.Pants] = true,
+	[Enum.AccessoryType.Shorts] = true,
+	[Enum.AccessoryType.DressSkirt] = true,
+	[Enum.AccessoryType.LeftShoe] = true,
+	[Enum.AccessoryType.RightShoe] = true,
+	[Enum.AccessoryType.Eyebrow] = true,
+	[Enum.AccessoryType.Eyelash] = true,
+}
+
+-- Model morph: the player's character is REPLACED by a clone of a rigged model
+-- for the duration, then the original character is restored in place.
 
 type Morph = { wolf: Model, human: Model }
 local morphs: { [Player]: Morph } = {}
@@ -411,14 +446,10 @@ local function revertMorph(player: Player)
 	m.wolf:Destroy()
 end
 
-local function morphShift(ctx: Ctx, assetId: number): number?
+local function morphShift(ctx: Ctx, template: Model): number?
 	if morphs[ctx.player] then
 		revertMorph(ctx.player)
 		return 1
-	end
-	local template = loadWolfTemplate(assetId)
-	if not template then
-		return nil -- caller falls back to the procedural beast
 	end
 	local human = ctx.character
 	local wolf = template:Clone()
@@ -494,12 +525,21 @@ AbilityEffects.TheTurning = function(ctx)
 
 	-- A real werewolf avatar, if one is configured in AssetIds.
 	local kind, assetId = shiftAsset()
-	if kind == "model" and assetId then
-		local cd = morphShift(ctx, assetId)
-		if cd then
-			return cd
+	local wearAccessories: { Accessory }? = nil
+	if kind == "asset" and assetId then
+		local akind, payload = loadShiftAsset(assetId)
+		if akind == "rig" then
+			local cd = morphShift(ctx, payload :: Model)
+			if cd then
+				return cd
+			end
+			kind = nil
+		elseif akind == "accessories" then
+			wearAccessories = payload :: { Accessory }
+			kind = "accessories"
+		else
+			kind = nil -- fall back to the procedural beast
 		end
-		kind = nil -- load failed; fall back to the procedural beast
 	end
 
 	-- The beast, done the robust way: rewrite the avatar description. This
@@ -518,6 +558,17 @@ AbilityEffects.TheTurning = function(ctx)
 			else
 				kind = nil
 			end
+		end
+		if kind == "accessories" and wearAccessories and assetId then
+			local list = target:GetAccessories(true)
+			for _, acc in wearAccessories do
+				table.insert(list, {
+					AssetId = assetId,
+					AccessoryType = acc.AccessoryType,
+					IsLayered = LAYERED[acc.AccessoryType] == true,
+				})
+			end
+			target:SetAccessories(list, true)
 		end
 		if kind ~= "bundle" then
 			target.HeadColor = FUR

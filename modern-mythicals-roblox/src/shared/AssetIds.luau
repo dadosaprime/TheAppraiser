@@ -25,7 +25,7 @@ AssetIds.ClassModels = {
 	-- The beast. Accepts:  "bundle:<id>" (Avatar Shop bundle, cleanest)
 	--                       "rbxassetid://<id>" (Creator Store rig → morph)
 	--                       "" (procedural fur + ears + eyes)
-	WerewolfShifted = "",
+	WerewolfShifted = "107113755734876", -- free werewolf from the Roblox catalog/store (auto-detected on load)
 	Vampire = "",
 	Frankenstein = "",
 	Immortal = "",
