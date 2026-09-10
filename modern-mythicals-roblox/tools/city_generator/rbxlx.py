@@ -97,6 +97,7 @@ _MATERIALS = {
     "Neon": 288,
     "Wood": 512,
     "Metal": 1088,
+    "Fabric": 1312,
 }
 
 

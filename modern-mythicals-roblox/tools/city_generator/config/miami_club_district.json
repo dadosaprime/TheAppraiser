@@ -3,47 +3,644 @@
 	"strip_length": 1800,
 	"depth": 1400,
 	"part_budget": 30000,
-
-	"_comment": "Authored spine + procedural fill. Three named road splines. Collins is the neon strip; Abbott is quiet residential (NO neon); the Service road is the warehouse belt between them. Edit a plot's index/street/type here and the street re-lays out. See 260816-MiamiClubDistrictSpec.md.",
+	"_comment": "Authored spine + procedural fill. Three named road splines. Collins is the neon strip (trendy row, then the dim Far Row past far_row_from); Abbott is quiet residential (NO neon); the Service road is the warehouse belt between them. Plots pack in list order per street. See 260816-MiamiClubDistrictSpec.md.",
 	"_osm_note": "Optional real-map pass: add osm_origin [lat,lon] and osm_bbox [s,w,n,e] and run with --osm. ODbL attribution required in-game.",
-
+	"far_row_from": 910,
 	"roads": {
-		"COLLINS": { "z": 0, "plot_depth": 60 },
-		"SERVICE": { "z": 200, "plot_depth": 45 },
-		"ABBOTT": { "z": 400, "plot_depth": 60 }
+		"COLLINS": {
+			"z": 0,
+			"plot_depth": 60
+		},
+		"SERVICE": {
+			"z": 200,
+			"plot_depth": 45
+		},
+		"ABBOTT": {
+			"z": 400,
+			"plot_depth": 60
+		}
 	},
-
 	"neon_palette": {
-		"BLUE": [30, 120, 255],
-		"MAGENTA": [255, 40, 200],
-		"PINK": [255, 80, 160],
-		"CYAN": [40, 230, 230],
-		"ORANGE": [255, 150, 40],
-		"GREEN": [40, 230, 120]
+		"BLUE": [
+			30,
+			120,
+			255
+		],
+		"MAGENTA": [
+			255,
+			40,
+			200
+		],
+		"PINK": [
+			255,
+			80,
+			160
+		],
+		"CYAN": [
+			40,
+			230,
+			230
+		],
+		"ORANGE": [
+			255,
+			150,
+			40
+		],
+		"GREEN": [
+			40,
+			230,
+			120
+		]
 	},
-
 	"plots": [
-		{ "index": 1, "street": "COLLINS", "side": "INLAND", "width": 70, "type": "CLUB", "floors": 3, "neon": "MAGENTA", "crowd": 0.9 },
-		{ "index": 2, "street": "COLLINS", "side": "INLAND", "width": 55, "type": "BAR", "floors": 2, "neon": "BLUE", "crowd": 0.7 },
-		{ "index": 3, "street": "COLLINS", "side": "INLAND", "width": 60, "type": "RESTAURANT", "floors": 2, "neon": "ORANGE", "crowd": 0.6 },
-		{ "index": 4, "street": "COLLINS", "side": "INLAND", "width": 75, "type": "CLUB", "floors": 4, "neon": "PINK", "crowd": 0.85 },
-		{ "index": 5, "street": "COLLINS", "side": "INLAND", "width": 90, "type": "LANDMARK", "landmark": "SteelZebra", "floors": 3, "crowd": 0.0, "_note": "Boarded up since 2018. Commemorative plaque by the door." },
-		{ "index": 6, "street": "COLLINS", "side": "INLAND", "width": 60, "type": "OFFICE", "floors": 3, "crowd": 0.3 },
-		{ "index": 7, "street": "COLLINS", "side": "INLAND", "width": 70, "type": "CLUB", "floors": 3, "neon": "CYAN", "crowd": 0.8 },
-		{ "index": 8, "street": "COLLINS", "side": "INLAND", "width": 55, "type": "BAR", "floors": 2, "neon": "BLUE", "crowd": 0.5 },
-		{ "index": 9, "street": "COLLINS", "side": "INLAND", "width": 65, "type": "LANDMARK", "landmark": "VampireBar", "floors": 2, "crowd": 0.4, "_note": "One genuinely nice place among the cheaper far-row bars. The clean awning is the tell." },
-
-		{ "index": 20, "street": "SERVICE", "side": "INLAND", "width": 110, "type": "WAREHOUSE", "floors": 2, "crowd": 0.0 },
-		{ "index": 21, "street": "SERVICE", "side": "INLAND", "width": 100, "type": "WAREHOUSE", "floors": 2, "crowd": 0.0 },
-		{ "index": 22, "street": "SERVICE", "side": "INLAND", "width": 70, "type": "OFFICE", "floors": 2, "crowd": 0.1, "_note": "the 'SHOP' slot — antique / old book store (gold vendor)" },
-		{ "index": 23, "street": "SERVICE", "side": "INLAND", "width": 110, "type": "WAREHOUSE", "floors": 2, "crowd": 0.0 },
-		{ "index": 24, "street": "SERVICE", "side": "INLAND", "width": 120, "type": "WAREHOUSE", "floors": 3, "crowd": 0.0 },
-
-		{ "index": 40, "street": "ABBOTT", "side": "INLAND", "width": 70, "type": "OFFICE", "floors": 2, "crowd": 0.1 },
-		{ "index": 41, "street": "ABBOTT", "side": "INLAND", "width": 90, "type": "WAREHOUSE", "floors": 2, "crowd": 0.0 },
-		{ "index": 42, "street": "ABBOTT", "side": "INLAND", "width": 80, "type": "LANDMARK", "landmark": "HouseOfSol", "floors": 2, "crowd": 0.2, "_note": "7140 Abbott Avenue. CANON location. The only warm light on Abbott. Front room public church + safe zone; back room Mythical-only (trainers, crossover vendor)." },
-		{ "index": 43, "street": "ABBOTT", "side": "INLAND", "width": 85, "type": "APTS", "floors": 3, "crowd": 0.15 },
-		{ "index": 44, "street": "ABBOTT", "side": "INLAND", "width": 90, "type": "WAREHOUSE", "floors": 2, "crowd": 0.0 },
-		{ "index": 45, "street": "ABBOTT", "side": "INLAND", "width": 70, "type": "OFFICE", "floors": 2, "crowd": 0.1 }
+		{
+			"index": 1,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 70,
+			"type": "CLUB",
+			"floors": 3,
+			"crowd": 0.9,
+			"neon": "MAGENTA"
+		},
+		{
+			"index": 2,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 55,
+			"type": "BAR",
+			"floors": 2,
+			"crowd": 0.7,
+			"neon": "BLUE"
+		},
+		{
+			"index": 3,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 60,
+			"type": "RESTAURANT",
+			"floors": 2,
+			"crowd": 0.6,
+			"neon": "ORANGE"
+		},
+		{
+			"index": 4,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 75,
+			"type": "CLUB",
+			"floors": 4,
+			"crowd": 0.85,
+			"neon": "PINK"
+		},
+		{
+			"index": 5,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 90,
+			"type": "LANDMARK",
+			"floors": 3,
+			"crowd": 0.0,
+			"landmark": "SteelZebra",
+			"_note": "Boarded up since 2018. Commemorative plaque by the door."
+		},
+		{
+			"index": 6,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 60,
+			"type": "OFFICE",
+			"floors": 3,
+			"crowd": 0.3
+		},
+		{
+			"index": 7,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 70,
+			"type": "CLUB",
+			"floors": 3,
+			"crowd": 0.8,
+			"neon": "CYAN"
+		},
+		{
+			"index": 8,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 55,
+			"type": "BAR",
+			"floors": 2,
+			"crowd": 0.5,
+			"neon": "BLUE"
+		},
+		{
+			"index": 9,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 65,
+			"type": "RESTAURANT",
+			"floors": 2,
+			"crowd": 0.6,
+			"neon": "GREEN"
+		},
+		{
+			"index": 10,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 80,
+			"type": "CLUB",
+			"floors": 4,
+			"crowd": 0.9,
+			"neon": "MAGENTA"
+		},
+		{
+			"index": 11,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 50,
+			"type": "SHOP",
+			"floors": 2,
+			"crowd": 0.3,
+			"_note": "24-hour shop; fluorescent windows"
+		},
+		{
+			"index": 12,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 60,
+			"type": "BAR",
+			"floors": 2,
+			"crowd": 0.6,
+			"neon": "PINK"
+		},
+		{
+			"index": 13,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 60,
+			"type": "LOT",
+			"floors": 1,
+			"crowd": 0.1
+		},
+		{
+			"index": 14,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 60,
+			"type": "OFFICE",
+			"floors": 3,
+			"crowd": 0.2
+		},
+		{
+			"index": 15,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 60,
+			"type": "VACANT",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 16,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 50,
+			"type": "BAR",
+			"floors": 2,
+			"crowd": 0.3,
+			"neon": "ORANGE"
+		},
+		{
+			"index": 17,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 90,
+			"type": "VACANT",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 18,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 55,
+			"type": "BAR",
+			"floors": 1,
+			"crowd": 0.25,
+			"neon": "BLUE"
+		},
+		{
+			"index": 19,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 80,
+			"type": "LOT",
+			"floors": 1,
+			"crowd": 0.0
+		},
+		{
+			"index": 20,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 50,
+			"type": "BAR",
+			"floors": 2,
+			"crowd": 0.2,
+			"neon": "GREEN"
+		},
+		{
+			"index": 21,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 120,
+			"type": "VACANT",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 22,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 55,
+			"type": "BAR",
+			"floors": 2,
+			"crowd": 0.2,
+			"neon": "MAGENTA"
+		},
+		{
+			"index": 23,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 100,
+			"type": "VACANT",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 24,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 65,
+			"type": "LANDMARK",
+			"floors": 2,
+			"crowd": 0.4,
+			"landmark": "VampireBar",
+			"_note": "One genuinely nice place among the cheap far-row bars. The clean awning is the tell."
+		},
+		{
+			"index": 25,
+			"street": "COLLINS",
+			"side": "INLAND",
+			"width": 165,
+			"type": "VACANT",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 30,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 110,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 31,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 100,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 32,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 70,
+			"type": "SHOP",
+			"floors": 2,
+			"crowd": 0.1,
+			"_note": "antique / old book store (gold vendor)"
+		},
+		{
+			"index": 33,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 110,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 34,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 120,
+			"type": "WAREHOUSE",
+			"floors": 3,
+			"crowd": 0.0
+		},
+		{
+			"index": 35,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 130,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 36,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 90,
+			"type": "LOT",
+			"floors": 1,
+			"crowd": 0.0
+		},
+		{
+			"index": 37,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 140,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 38,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 120,
+			"type": "WAREHOUSE",
+			"floors": 3,
+			"crowd": 0.0
+		},
+		{
+			"index": 39,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 110,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 40,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 80,
+			"type": "VACANT",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 41,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 150,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 42,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 130,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 43,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 140,
+			"type": "WAREHOUSE",
+			"floors": 3,
+			"crowd": 0.0
+		},
+		{
+			"index": 44,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 100,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 45,
+			"street": "SERVICE",
+			"side": "INLAND",
+			"width": 100,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 50,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 70,
+			"type": "OFFICE",
+			"floors": 2,
+			"crowd": 0.1
+		},
+		{
+			"index": 51,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 90,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 52,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 80,
+			"type": "LANDMARK",
+			"floors": 2,
+			"crowd": 0.2,
+			"landmark": "HouseOfSol",
+			"_note": "7140 Abbott Avenue. CANON location. The only warm light on Abbott. Front room public church + safe zone; back room Mythical-only."
+		},
+		{
+			"index": 53,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 85,
+			"type": "APTS",
+			"floors": 3,
+			"crowd": 0.15
+		},
+		{
+			"index": 54,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 90,
+			"type": "WAREHOUSE",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 55,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 70,
+			"type": "OFFICE",
+			"floors": 2,
+			"crowd": 0.1
+		},
+		{
+			"index": 56,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 90,
+			"type": "APTS",
+			"floors": 3,
+			"crowd": 0.15
+		},
+		{
+			"index": 57,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 60,
+			"type": "SHOP",
+			"floors": 1,
+			"crowd": 0.1,
+			"_note": "laundromat"
+		},
+		{
+			"index": 58,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 85,
+			"type": "APTS",
+			"floors": 2,
+			"crowd": 0.15
+		},
+		{
+			"index": 59,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 70,
+			"type": "LOT",
+			"floors": 1,
+			"crowd": 0.0
+		},
+		{
+			"index": 60,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 95,
+			"type": "APTS",
+			"floors": 3,
+			"crowd": 0.15
+		},
+		{
+			"index": 61,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 65,
+			"type": "OFFICE",
+			"floors": 2,
+			"crowd": 0.1
+		},
+		{
+			"index": 62,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 90,
+			"type": "APTS",
+			"floors": 2,
+			"crowd": 0.15
+		},
+		{
+			"index": 63,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 80,
+			"type": "VACANT",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 64,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 85,
+			"type": "APTS",
+			"floors": 3,
+			"crowd": 0.15
+		},
+		{
+			"index": 65,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 55,
+			"type": "SHOP",
+			"floors": 1,
+			"crowd": 0.1
+		},
+		{
+			"index": 66,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 90,
+			"type": "APTS",
+			"floors": 2,
+			"crowd": 0.15
+		},
+		{
+			"index": 67,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 70,
+			"type": "OFFICE",
+			"floors": 3,
+			"crowd": 0.1
+		},
+		{
+			"index": 68,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 85,
+			"type": "APTS",
+			"floors": 2,
+			"crowd": 0.15
+		},
+		{
+			"index": 69,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 95,
+			"type": "VACANT",
+			"floors": 2,
+			"crowd": 0.0
+		},
+		{
+			"index": 70,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 100,
+			"type": "APTS",
+			"floors": 3,
+			"crowd": 0.15
+		},
+		{
+			"index": 71,
+			"street": "ABBOTT",
+			"side": "INLAND",
+			"width": 100,
+			"type": "OFFICE",
+			"floors": 2,
+			"crowd": 0.1
+		}
 	]
 }

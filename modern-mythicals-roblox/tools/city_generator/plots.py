@@ -51,6 +51,8 @@ class DistrictConfig:
     # Optional real-map pass (see osm.py): [lat, lon] origin and [s, w, n, e] bbox.
     osm_origin: list[float] | None = None
     osm_bbox: list[float] | None = None
+    # Collins x-position where the trendy row ends and the Far Row (dim) begins.
+    far_row_from: float | None = None
 
     @staticmethod
     def load(path: str) -> "DistrictConfig":
@@ -75,6 +77,7 @@ class DistrictConfig:
             neon_palette=data.get("neon_palette", {}),
             osm_origin=data.get("osm_origin"),
             osm_bbox=data.get("osm_bbox"),
+            far_row_from=data.get("far_row_from"),
         )
 
 

@@ -2,23 +2,22 @@
 """Modern Mythicals city generator.
 
 Reads a district config (authored plot list + road splines) and emits a .rbxlx
-place fragment of anchored Parts — buildings, roads, neon, landmark placeholders.
-No Studio, no CSG, no SurfaceAppearance, no baked terrain.
+/ .rbxmx of anchored Parts — buildings with facades, roads, sidewalks, the back
+alley, palms, parked cars, lamps, neon, landmark placeholders. No Studio, no
+CSG, no SurfaceAppearance, no baked terrain.
 
 Usage:
-    python generate.py --config config/miami_club_district.json --out ../../build/miami.rbxlx
-
-Optional real-map pass (needs network; ODbL attribution required in-game):
-    python generate.py --config config/miami_club_district.json --osm --out build/miami.rbxlx
+    python generate.py --config config/miami_club_district.json --out ../../map/GeneratedCity.rbxmx
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import random
 import sys
 
-import facade_kit
+import facade_kit as fk
 from plots import DistrictConfig, layout
 from rbxlx import Part, Place
 
@@ -26,46 +25,102 @@ from rbxlx import Part, Place
 def generate(config_path: str, out_path: str, use_osm: bool = False) -> int:
     config = DistrictConfig.load(config_path)
     place = Place()
+    L = config.strip_length
+    collins = config.roads["COLLINS"].z
+    rng = random.Random("miami-street-furniture")
 
-    # Roads first (flat slabs).
+    # ── Ground: roads, sidewalks, beach ────────────────────────────────────
     for name, road in config.roads.items():
         material = "Asphalt" if name != "SERVICE" else "Cobblestone"
-        for part in facade_kit.build_road(name, road.z, config.strip_length, 50, material):
+        for part in fk.build_road(name, road.z, L, 50, material):
             place.add(part)
-
-    # Streetlights — the city lights itself. Collins: dense, cool white.
-    # Abbott: sparse sodium orange, no neon (the tone break). Service road: none.
-    for part in facade_kit.build_streetlights(
-        "COLLINS", config.roads["COLLINS"].z, config.strip_length, 50, 110, (235, 240, 255), 3.5
-    ):
+    # Collins: wide sidewalk on the building side, palm-lined walk on the ocean side.
+    for part in fk.build_sidewalk("COLLINS_inland", collins + 32.5, L, 15):
         place.add(part)
-    if "ABBOTT" in config.roads:
-        for part in facade_kit.build_streetlights(
-            "ABBOTT", config.roads["ABBOTT"].z, config.strip_length, 50, 260, (255, 170, 80), 2.2
-        ):
-            place.add(part)
-
-    # Beach-walk lamps along the sand line so the spawn area reads at night.
-    for part in facade_kit.build_streetlights(
-        "BEACHWALK", config.roads["COLLINS"].z - 190, config.strip_length, 0, 150, (255, 235, 200), 2.6
-    ):
+    for part in fk.build_sidewalk("COLLINS_ocean", collins - 45, L, 40):
         place.add(part)
-
-    # Beach ground slab (east of Collins).
+    for part in fk.build_sidewalk("ABBOTT_inland", config.roads["ABBOTT"].z + 32.5, L, 15):
+        place.add(part)
     place.add(
         Part(
             name="Beach",
-            position=(config.strip_length / 2, 0.25, config.roads["COLLINS"].z - 350),
-            size=(config.strip_length, 0.5, 300),
+            position=(L / 2, 0.25, collins - 215),
+            size=(L, 0.5, 300),
             color=(210, 200, 170),
             material="Sand",
         )
     )
 
-    # Plots.
+    # ── Lamps: the city lights itself ──────────────────────────────────────
+    for part in fk.build_streetlights("COLLINS", collins, L, 50, 110, (235, 240, 255), 3.5):
+        place.add(part)
+    for part in fk.build_streetlights("ABBOTT", config.roads["ABBOTT"].z, L, 50, 260, (255, 170, 80), 2.2):
+        place.add(part)
+    for part in fk.build_streetlights("BEACHWALK", collins - 190, L, 0, 150, (255, 235, 200), 2.6):
+        place.add(part)
+
+    # ── Palms along the ocean-side walk ────────────────────────────────────
+    x = 30.0
+    while x < L:
+        for part in fk.build_palm(x + rng.uniform(-4, 4), collins - 48 + rng.uniform(-6, 6), rng):
+            place.add(part)
+        x += 60
+
+    # ── Parked cars: both curbs of Collins, thinner on Abbott ──────────────
+    for z_curb, occupancy in ((collins + 21, 0.7), (collins - 21, 0.55)):
+        x = 20.0
+        while x < L - 10:
+            if rng.random() < occupancy:
+                for part in fk.build_car(x, z_curb, rng):
+                    place.add(part)
+            x += 42
+    x = 40.0
+    while x < L - 10:
+        if rng.random() < 0.35:
+            for part in fk.build_car(x, config.roads["ABBOTT"].z + 21, rng):
+                place.add(part)
+        x += 60
+
+    # ── Plots (buildings, lots, landmarks) ─────────────────────────────────
     laid = layout(config)
+    far_row_from = getattr(config, "far_row_from", None)
     for plot in laid:
-        for part in facade_kit.build_plot(plot, config.neon_palette):
+        dim = far_row_from is not None and plot.street == "COLLINS" and plot.x >= far_row_from
+        for part in fk.build_plot(plot, config.neon_palette, dim=dim):
+            place.add(part)
+
+    # ── The back alley behind the trendy row ───────────────────────────────
+    # "The single most important piece of geometry in the district."
+    alley_z0 = collins + 60 + fk.BUILDING_DEPTH / 2 + 2   # rear wall of Collins buildings
+    alley_z1 = alley_z0 + 35
+    place.add(
+        Part(
+            name="BackAlley",
+            position=(L / 2, 0.3, (alley_z0 + alley_z1) / 2),
+            size=(L, 0.6, alley_z1 - alley_z0),
+            color=(28, 28, 31),
+            material="Cobblestone",
+        )
+    )
+    x = 35.0
+    while x < L:
+        if rng.random() < 0.8:
+            for part in fk.build_dumpster(x + rng.uniform(-6, 6), alley_z0 + 5 + rng.uniform(0, 6)):
+                place.add(part)
+        x += 90
+    x = 40.0
+    while x < L:
+        for part in fk.build_alley_light(x, alley_z0 + 1.2):
+            place.add(part)
+        x += 80
+
+    # ── Cross-alleys through the back blocks (farm zone) ───────────────────
+    service_back = config.roads["SERVICE"].z + 45 + fk.BUILDING_DEPTH / 2 + 2
+    abbott_front = config.roads["ABBOTT"].z + 60 - fk.BUILDING_DEPTH / 2 - 2
+    for cx in (L * 0.25, L * 0.5, L * 0.75):
+        for part in fk.build_cross_alley(cx, service_back, abbott_front):
+            place.add(part)
+        for part in fk.build_alley_light(cx + 8, (service_back + abbott_front) / 2, y=10):
             place.add(part)
 
     if use_osm:
@@ -82,10 +137,7 @@ def generate(config_path: str, out_path: str, use_osm: bool = False) -> int:
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     place.write(out_path)
     print(f"Wrote {place.count()} parts → {out_path}")
-    print(
-        f"District: {config.name}  ({config.strip_length}×{config.depth} studs, "
-        f"budget {config.part_budget})"
-    )
+    print(f"District: {config.name}  ({config.strip_length}×{config.depth} studs, budget {config.part_budget})")
     return 0
 
 
@@ -108,7 +160,7 @@ def _osm_pass(config: DistrictConfig, place: Place) -> None:
         cx, cz = sum(xs) / len(xs), sum(zs) / len(zs)
         w = max(xs) - min(xs)
         d = max(zs) - min(zs)
-        h = fp["floors"] * facade_kit.FLOOR_HEIGHT
+        h = fp["floors"] * fk.FLOOR_HEIGHT
         place.add(
             Part(
                 name=f"osm_building_{i}",
@@ -123,7 +175,7 @@ def _osm_pass(config: DistrictConfig, place: Place) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Modern Mythicals city generator")
     parser.add_argument("--config", required=True, help="district config JSON")
-    parser.add_argument("--out", required=True, help="output .rbxlx path")
+    parser.add_argument("--out", required=True, help="output .rbxlx/.rbxmx path")
     parser.add_argument("--osm", action="store_true", help="overlay real OSM footprints")
     args = parser.parse_args()
     return generate(args.config, args.out, use_osm=args.osm)
