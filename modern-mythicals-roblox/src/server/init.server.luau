@@ -25,9 +25,11 @@ local TrainingDummies = require(script.TrainingDummies)
 local StreetGang = require(script.StreetGang)
 local Fury = require(script.Fury)
 local LootService = require(script.LootService)
+local SoulService = require(script.SoulService)
 
 -- ── Start services ──────────────────────────────────────────────────────────
 DataService.init()
+SoulService.init()
 Fury.init()
 SpawnService.init()
 TerrainGenerator.init()

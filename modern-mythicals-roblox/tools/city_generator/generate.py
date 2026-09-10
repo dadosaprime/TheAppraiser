@@ -17,6 +17,7 @@ import os
 import random
 import sys
 
+import clutter
 import facade_kit as fk
 from plots import DistrictConfig, layout
 from rbxlx import Part, Place
@@ -113,6 +114,14 @@ def generate(config_path: str, out_path: str, use_osm: bool = False) -> int:
         for part in fk.build_alley_light(x, alley_z0 + 1.2):
             place.add(part)
         x += 80
+
+    # ── Clutter: the alley and the street ──────────────────────────────────
+    rear_wall_z = collins + 60 + fk.BUILDING_DEPTH / 2
+    for part in clutter.alley(L, alley_z0, alley_z1, rear_wall_z, rng):
+        place.add(part)
+    club_doors = [pl.x + pl.width / 2 for pl in laid if pl.street == "COLLINS" and pl.type == "CLUB"]
+    for part in clutter.street(L, collins, club_doors, rng):
+        place.add(part)
 
     # ── Cross-alleys through the back blocks (farm zone) ───────────────────
     service_back = config.roads["SERVICE"].z + 45 + fk.BUILDING_DEPTH / 2 + 2

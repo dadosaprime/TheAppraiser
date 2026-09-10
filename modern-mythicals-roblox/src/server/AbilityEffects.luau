@@ -21,6 +21,7 @@ local CombatService = require(script.Parent.CombatService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local SpawnService = require(script.Parent.SpawnService)
 local Fury = require(script.Parent.Fury)
+local SoulService = require(script.Parent.SoulService)
 
 export type Ctx = {
 	player: Player,
@@ -168,6 +169,7 @@ local function hit(target: Model, amount: number, dmgType: string, attacker: Mod
 			local killer = Players:GetPlayerFromCharacter(attacker)
 			if killer then
 				ProgressionService.awardShards(killer, reward)
+				SoulService.restore(killer, SoulService.KILL_RESTORE) -- a fight feeds you
 				if p then
 					Effects.damageNumber(p + Vector3.new(0, 2, 0), reward, Color3.fromRGB(255, 215, 90))
 				end

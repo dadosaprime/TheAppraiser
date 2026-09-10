@@ -14,6 +14,7 @@ import random
 
 from plots import Plot
 from rbxlx import Part, PointLight, proximity_prompt
+import furnish
 
 FLOOR_HEIGHT = 14.0  # studs per floor
 BUILDING_DEPTH = 40.0
@@ -41,6 +42,8 @@ _WINDOW_LIT = {
     "APTS": (0.5, (255, 215, 150)),
     "SHOP": (0.6, (170, 235, 240)),
 }
+
+NEON_HINT = {"BLUE": (30, 120, 255), "MAGENTA": (255, 40, 200), "PINK": (255, 80, 160), "CYAN": (40, 230, 230), "ORANGE": (255, 150, 40), "GREEN": (40, 230, 120)}
 
 _CAR_COLORS = [
     (200, 200, 205), (30, 30, 34), (120, 20, 30), (20, 40, 90),
@@ -577,6 +580,18 @@ def build_explorable(plot: Plot, height: float, depth: float, rng: random.Random
         parts.append(Part(name=f"bulb_{tag}_{f}", position=(cx, f * FLOOR_HEIGHT + FLOOR_HEIGHT - 2, plot.z),
                           size=(0.8, 0.5, 0.8), color=(255, 205, 140), material="Neon",
                           lights=[PointLight(color=(255, 195, 130), brightness=0.9, range=max(w, depth) * 0.9)]))
+
+    # Furnish every floor: usable area = inside the walls, on the street side of
+    # the stair band, with a clear lane from the door to the stairs.
+    lo, hi = sorted((fz, bz))
+    lo += 2.5
+    hi -= 2.5
+    cands = [(lo, min(hi, zs - 4.5)), (max(lo, zs + 4.5), hi)]
+    zr = max(cands, key=lambda c: c[1] - c[0])
+    neon_rgb = tuple(NEON_HINT.get(plot.neon, (255, 170, 90))) if plot.neon else None
+    for f in range(plot.floors):
+        room = furnish.Room(tag, f, x0 + 2.5, x1 - 2.5, zr[0], zr[1], f * FLOOR_HEIGHT + 0.5, cx, rng)
+        furnish.furnish_room(plot.type, room, parts, neon=neon_rgb)
 
     # Loot: ground floor small, each upper floor medium, roof large.
     lx = cx + o * 0 + (w / 2 - 6)

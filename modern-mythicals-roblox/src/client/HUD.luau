@@ -14,6 +14,14 @@ local SoulRanks = require(Shared.SoulRanks)
 
 local player = Players.LocalPlayer
 
+-- Mirror of the server's per-role Soul costs, for display only.
+local SOUL_COST: { [string]: number } = {
+	["heavy offense"] = 8, ["heavy offense / control"] = 8, ["defense + melee"] = 6,
+	["defense / signature"] = 2, ["control"] = 7, ["control / team"] = 8,
+	["mobility offense"] = 5, ["escape"] = 8, ["movement"] = 4, ["utility / unlock"] = 3,
+	["utility / tracking"] = 4, ["stealth + movement"] = 6, ["burst"] = 4, ["revive / support"] = 10,
+}
+
 local HUD = {}
 
 local gui: ScreenGui
@@ -28,6 +36,8 @@ local healthText: TextLabel
 local furyRow: Frame
 local furyFill: Frame
 local furyText: TextLabel
+local soulFill: Frame
+local soulText: TextLabel
 local formBadge: TextLabel
 local currentClass: string? = nil
 
@@ -84,11 +94,14 @@ function HUD.build()
 	-- Health (all classes) and Fury (Werewolf only).
 	local _, hf, ht = makeBar(gui, UDim2.fromScale(0.01, 0.20), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(70, 200, 110))
 	healthFill, healthText = hf, ht
-	local fr, ff, ft = makeBar(gui, UDim2.fromScale(0.01, 0.245), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(230, 90, 40))
+	local _, sf, st = makeBar(gui, UDim2.fromScale(0.01, 0.245), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(120, 130, 255))
+	soulFill, soulText = sf, st
+	soulText.Text = "SOUL"
+	local fr, ff, ft = makeBar(gui, UDim2.fromScale(0.01, 0.29), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(230, 90, 40))
 	furyRow, furyFill, furyText = fr, ff, ft
 	furyRow.Visible = false
 
-	formBadge = makeLabel(gui, "WOLF FORM", UDim2.fromScale(0.01, 0.29), UDim2.fromScale(0.18, 0.04))
+	formBadge = makeLabel(gui, "WOLF FORM", UDim2.fromScale(0.01, 0.335), UDim2.fromScale(0.18, 0.04))
 	formBadge.BackgroundColor3 = Color3.fromRGB(120, 20, 30)
 	formBadge.BackgroundTransparency = 0.15
 	formBadge.Visible = false
@@ -166,7 +179,9 @@ function HUD.update(profile: any)
 		local owned = treeId and (profile.perks[treeId] or 0) or 0
 		if tree then
 			local tag = if class and treeId == class.attackTree then "🖱 " else ""
-			slotButtons[slot].Text = ("%d  %s%s\nrank %d/%d"):format(slot, tag, tree.ability, owned, PerkTrees.MAX_RANK)
+			local cost = SOUL_COST[tree.role] or 0
+			local costText = if cost > 0 then ("  ·  %d Soul"):format(cost) else ""
+			slotButtons[slot].Text = ("%d  %s%s\nrank %d/%d%s"):format(slot, tag, tree.ability, owned, PerkTrees.MAX_RANK, costText)
 			slotButtons[slot].TextColor3 = if owned > 0 then Color3.fromRGB(230, 225, 240) else Color3.fromRGB(120, 115, 135)
 		else
 			slotButtons[slot].Text = tostring(slot)
@@ -179,6 +194,10 @@ function HUD.setStatus(status: any)
 	if type(status) ~= "table" then
 		return
 	end
+	if type(status.soul) == "number" and type(status.soulMax) == "number" and status.soulMax > 0 then
+		soulFill.Size = UDim2.fromScale(math.clamp(status.soul / status.soulMax, 0, 1), 1)
+		soulText.Text = ("SOUL %d / %d"):format(status.soul, status.soulMax)
+	end
 	if currentClass == "Werewolf" and type(status.fury) == "number" and type(status.furyMax) == "number" then
 		local frac = math.clamp(status.fury / status.furyMax, 0, 1)
 		furyFill.Size = UDim2.fromScale(frac, 1)
@@ -188,7 +207,9 @@ function HUD.setStatus(status: any)
 			else ("FURY %d / %d  (shift at %d)"):format(status.fury, status.furyMax, cost)
 		furyFill.BackgroundColor3 = if status.fury >= cost then Color3.fromRGB(255, 110, 40) else Color3.fromRGB(150, 60, 30)
 	end
-	formBadge.Visible = status.shifted == true
+	if status.shifted ~= nil then
+		formBadge.Visible = status.shifted == true
+	end
 end
 
 -- Short message at the top; fades after a moment.

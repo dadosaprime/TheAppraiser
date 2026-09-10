@@ -16,6 +16,7 @@ local PerkTrees = require(Shared.PerkTrees)
 
 local DataService = require(script.Parent.DataService)
 local AbilityEffects = require(script.Parent.AbilityEffects)
+local SoulService = require(script.Parent.SoulService)
 
 local AbilityService = {}
 
@@ -45,6 +46,36 @@ local BASE_COOLDOWN: { [string]: number } = {
 	["the shift"] = 1,
 	["offense"] = 0.6,
 }
+
+-- Soul cost per role. The basic attack is free (mundane); supernatural
+-- abilities draw from the pool. The Werewolf's shift and claws are free here
+-- because the shift runs on Fury. PLACEHOLDER — tune in playtest.
+local SOUL_COST: { [string]: number } = {
+	["basic attack"] = 0,
+	["basic attack + sustain"] = 0,
+	["offense"] = 0,
+	["the shift"] = 0,
+	["heavy offense"] = 8,
+	["heavy offense / control"] = 8,
+	["defense + melee"] = 6,
+	["defense / signature"] = 2,
+	["control"] = 7,
+	["control / team"] = 8,
+	["mobility offense"] = 5,
+	["escape"] = 8,
+	["movement"] = 4,
+	["utility / unlock"] = 3,
+	["utility / tracking"] = 4,
+	["stealth + movement"] = 6,
+	["burst"] = 4,
+	["revive / support"] = 10,
+	["sustain / self-res"] = 0,
+}
+
+function AbilityService.soulCost(treeId: string): number
+	local tree = PerkTrees.get(treeId)
+	return if tree then (SOUL_COST[tree.role] or 0) else 0
+end
 
 local function readyAt(player: Player, treeId: string): number
 	local perPlayer = cooldowns[player]
@@ -99,9 +130,18 @@ function AbilityService.activate(player: Player, slot: number, target: any?): Ac
 	local tree = PerkTrees.get(treeId)
 	assert(tree, "tree missing")
 
+	-- Spend Soul first (supernatural abilities only), refund if the effect refuses.
+	local cost = SOUL_COST[tree.role] or 0
+	if cost > 0 and not SoulService.trySpend(player, cost) then
+		return { ok = false, err = ("Not enough Soul — %d needed"):format(cost) }
+	end
+
 	-- Run the effect. Effects may return a cooldown override and/or a refusal.
 	local cdOverride, err = AbilityService.runEffect(player, treeId, rank, target)
 	if err then
+		if cost > 0 then
+			SoulService.restore(player, cost)
+		end
 		return { ok = false, err = err }
 	end
 	local cd = cdOverride or BASE_COOLDOWN[tree.role] or 1
