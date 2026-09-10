@@ -28,11 +28,10 @@ local Classes: { [Types.ClassId]: Types.Class } = {
 		mythologicalAnchor = "Lycanthropy proper — the turning, the pack howl, scent, claws that hold stone.",
 		baseHealth = SoulRanks.BASE_HEALTH,
 		baseSoulPool = SoulRanks.BASE_SOUL_POOL,
-		-- Werewolves spend FURY (builds by dealing/taking damage, drains while shifted),
-		-- not Soul Pool. This is the only class whose resource rewards staying in the fight.
-		resource = "Fury",
-		-- Claws on slot 1 (they BUILD Fury), the shift on slot 2 (it SPENDS it).
-		-- Playtest decision: the first button should be the one you press first.
+		-- Runs on Soul like everyone else. The shift's price: a slice of the pool is
+		-- LOCKED (grey, unspendable, no refill) for as long as the form is held.
+		resource = "SoulPool",
+		-- Claws on slot 1 (free, mundane), the shift on slot 2 (locks Soul).
 		trees = { "RedRend", "TheTurning", "HuntersHowl", "BloodScent", "CragClimb" },
 		attackTree = "RedRend",
 	},

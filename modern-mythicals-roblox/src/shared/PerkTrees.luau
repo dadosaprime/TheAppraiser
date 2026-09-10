@@ -105,9 +105,9 @@ PerkTrees.TheTurning = {
 	summary = "The class identity, on one button. Shifted = bigger, stronger, and easier to hit (fire/electric weakness).",
 	ranks = {
 		r(1, "Shift", "Bonus health, faster regen, claws, speed, larger hitbox, fire/electric weakness."),
-		r(2, "Deeper Beast", "More bonus health. Faster Fury generation."),
+		r(2, "Deeper Beast", "More bonus health. Faster health regen while shifted."),
 		r(3, "Blood Rush", "Shifting heals you for a chunk on activation."),
-		r(4, "Sustained Form", "Longer duration before Fury drains out."),
+		r(4, "Sustained Form", "The form locks less of your Soul (30% instead of 40%)."),
 		r(5, "Thick Hide", "Weakness reduced — fire/electric hurt less, but still more than human form."),
 	},
 }
@@ -136,7 +136,7 @@ PerkTrees.HuntersHowl = {
 		r(2, "Terror", "Larger radius, longer duration."),
 		r(3, "Hamstring", "Also slows affected enemies."),
 		r(4, "Pack Fervor", "Allies in radius gain a small damage bonus."),
-		r(5, "Blood Call", "Grants Fury on cast, scaling with enemies hit."),
+		r(5, "Blood Call", "Restores Soul on cast, scaling with enemies hit."),
 	},
 }
 PerkTrees.BloodScent = {

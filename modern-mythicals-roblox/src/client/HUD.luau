@@ -33,11 +33,9 @@ local slotButtons: { TextButton } = {}
 local toastSerial = 0
 local healthFill: Frame
 local healthText: TextLabel
-local furyRow: Frame
-local furyFill: Frame
-local furyText: TextLabel
 local soulFill: Frame
 local soulText: TextLabel
+local soulLock: Frame
 local formBadge: TextLabel
 local currentClass: string? = nil
 
@@ -91,17 +89,24 @@ function HUD.build()
 	rankLabel = makeLabel(gui, "Soul Rank —", UDim2.fromScale(0.01, 0.08), UDim2.fromScale(0.18, 0.05))
 	shardLabel = makeLabel(gui, "Shards: —", UDim2.fromScale(0.01, 0.14), UDim2.fromScale(0.18, 0.05))
 
-	-- Health (all classes) and Fury (Werewolf only).
+	-- Health and Soul (all classes). The Werewolf's shift greys out a slice of Soul.
 	local _, hf, ht = makeBar(gui, UDim2.fromScale(0.01, 0.20), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(70, 200, 110))
 	healthFill, healthText = hf, ht
-	local _, sf, st = makeBar(gui, UDim2.fromScale(0.01, 0.245), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(120, 130, 255))
+	local sr, sf, st = makeBar(gui, UDim2.fromScale(0.01, 0.245), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(120, 130, 255))
 	soulFill, soulText = sf, st
 	soulText.Text = "SOUL"
-	local fr, ff, ft = makeBar(gui, UDim2.fromScale(0.01, 0.29), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(230, 90, 40))
-	furyRow, furyFill, furyText = fr, ff, ft
-	furyRow.Visible = false
+	-- Locked slice: grey, anchored to the right end of the bar.
+	soulLock = Instance.new("Frame")
+	soulLock.AnchorPoint = Vector2.new(1, 0)
+	soulLock.Position = UDim2.fromScale(1, 0)
+	soulLock.Size = UDim2.fromScale(0, 1)
+	soulLock.BackgroundColor3 = Color3.fromRGB(95, 95, 105)
+	soulLock.BorderSizePixel = 0
+	soulLock.ZIndex = 2
+	soulLock.Parent = sr
+	st.ZIndex = 3
 
-	formBadge = makeLabel(gui, "WOLF FORM", UDim2.fromScale(0.01, 0.335), UDim2.fromScale(0.18, 0.04))
+	formBadge = makeLabel(gui, "WOLF FORM", UDim2.fromScale(0.01, 0.29), UDim2.fromScale(0.18, 0.04))
 	formBadge.BackgroundColor3 = Color3.fromRGB(120, 20, 30)
 	formBadge.BackgroundTransparency = 0.15
 	formBadge.Visible = false
@@ -172,7 +177,6 @@ function HUD.update(profile: any)
 	local class = profile.class and Classes.get(profile.class)
 	currentClass = profile.class
 	classLabel.Text = class and class.displayName or "No class"
-	furyRow.Visible = profile.class == "Werewolf"
 	for slot = 1, 5 do
 		local treeId = class and class.trees[slot]
 		local tree = treeId and PerkTrees.get(treeId)
@@ -189,23 +193,18 @@ function HUD.update(profile: any)
 	end
 end
 
--- Transient combat status from the server (Fury, shifted).
+-- Transient combat status from the server (Soul, lock, shifted).
 function HUD.setStatus(status: any)
 	if type(status) ~= "table" then
 		return
 	end
 	if type(status.soul) == "number" and type(status.soulMax) == "number" and status.soulMax > 0 then
+		local lockedAmt = if type(status.soulLocked) == "number" then status.soulLocked else 0
 		soulFill.Size = UDim2.fromScale(math.clamp(status.soul / status.soulMax, 0, 1), 1)
-		soulText.Text = ("SOUL %d / %d"):format(status.soul, status.soulMax)
-	end
-	if currentClass == "Werewolf" and type(status.fury) == "number" and type(status.furyMax) == "number" then
-		local frac = math.clamp(status.fury / status.furyMax, 0, 1)
-		furyFill.Size = UDim2.fromScale(frac, 1)
-		local cost = status.shiftCost or 0
-		furyText.Text = if status.shifted
-			then ("FURY %d — draining"):format(status.fury)
-			else ("FURY %d / %d  (shift at %d)"):format(status.fury, status.furyMax, cost)
-		furyFill.BackgroundColor3 = if status.fury >= cost then Color3.fromRGB(255, 110, 40) else Color3.fromRGB(150, 60, 30)
+		soulLock.Size = UDim2.fromScale(math.clamp(lockedAmt / status.soulMax, 0, 1), 1)
+		soulText.Text = if lockedAmt > 0
+			then ("SOUL %d / %d   ·   %d locked"):format(status.soul, status.soulMax - lockedAmt, lockedAmt)
+			else ("SOUL %d / %d"):format(status.soul, status.soulMax)
 	end
 	if status.shifted ~= nil then
 		formBadge.Visible = status.shifted == true

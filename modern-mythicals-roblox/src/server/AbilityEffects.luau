@@ -20,7 +20,6 @@ local Effects = require(script.Parent.Effects)
 local CombatService = require(script.Parent.CombatService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local SpawnService = require(script.Parent.SpawnService)
-local Fury = require(script.Parent.Fury)
 local SoulService = require(script.Parent.SoulService)
 
 export type Ctx = {
@@ -151,15 +150,6 @@ local function hit(target: Model, amount: number, dmgType: string, attacker: Mod
 	local p = modelPos(target)
 	if p then
 		Effects.damageNumber(p, applied, color)
-	end
-	-- Fury builds on both ends of a hit (only matters for Werewolves).
-	local attackerPlayer = Players:GetPlayerFromCharacter(attacker)
-	if attackerPlayer then
-		Fury.add(attackerPlayer, applied * Fury.GAIN_DEALT)
-	end
-	local victimPlayer = Players:GetPlayerFromCharacter(target)
-	if victimPlayer then
-		Fury.add(victimPlayer, applied * Fury.GAIN_TAKEN)
 	end
 	-- A kill pays Soul Shards to the player who landed it (once).
 	if hum.Health <= 0 then
@@ -441,6 +431,7 @@ local function revertMorph(player: Player)
 		return
 	end
 	morphs[player] = nil
+	SoulService.unlock(player)
 	local pivot = m.wolf:GetPivot()
 	m.human.Parent = Workspace
 	m.human:PivotTo(pivot)
@@ -496,8 +487,6 @@ local function morphShift(ctx: Ctx, template: Model): number?
 		Effects.flash(root, BEAST, 4, 18, 0.8)
 		Effects.burst(root.Position, BEAST, 6, 0.4)
 	end
-	-- The form lasts as long as Fury does (see Fury.luau).
-	Fury.setShiftRank(ctx.player, ctx.rank)
 	return 1
 end
 
@@ -518,9 +507,13 @@ AbilityEffects.TheTurning = function(ctx)
 		revertMorph(ctx.player)
 		return 1
 	end
-	if not Fury.canShift(ctx.player) then
-		return nil, ("Need %d Fury — fight in human form to build it"):format(Fury.SHIFT_COST)
+	-- The form's price: a slice of your Soul pool is locked away while you
+	-- hold it (grey on the bar, unspendable, won't refill). Rank 4 locks less.
+	local lockAmount = math.floor(SoulService.max(ctx.player) * (if ctx.rank >= 4 then 0.3 else 0.4) + 0.5)
+	if SoulService.get(ctx.player) < lockAmount then
+		return nil, ("Need %d Soul to hold the form"):format(lockAmount)
 	end
+	SoulService.lock(ctx.player, lockAmount, ctx.rank)
 	Effects.animate(ctx.character, "roar", 1.0)
 	local hum = ctx.humanoid
 	local rank = ctx.rank
@@ -653,9 +646,9 @@ AbilityEffects.TheTurning = function(ctx)
 	Effects.flash(ctx.root, BEAST, 4, 18, 0.8)
 	Effects.burst(ctx.root.Position, BEAST, 6, 0.4)
 
-	-- The form lasts as long as Fury does (see Fury.luau); no fixed timer.
-	Fury.setShiftRank(ctx.player, rank)
+	-- The form holds until toggled off; the lock is the ongoing cost.
 	setTimed(ctx, "shift", math.huge, function()
+		SoulService.unlock(ctx.player)
 		for _, e in extras do
 			e:Destroy()
 		end
@@ -892,18 +885,5 @@ Players.PlayerRemoving:Connect(function(player)
 		parryRank[player.Character] = nil
 	end
 end)
-
--- Fury owns the drain; it asks us whether a player is shifted and tells us to end it.
-Fury.isShifted = function(player: Player): boolean
-	local c = player.Character
-	return (c ~= nil and isTimed(c, "shift")) or morphs[player] ~= nil
-end
-Fury.endShift = function(player: Player)
-	local c = player.Character
-	if c then
-		clearTimed(c, "shift")
-	end
-	revertMorph(player)
-end
 
 return AbilityEffects

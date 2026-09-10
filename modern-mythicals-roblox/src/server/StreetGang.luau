@@ -16,7 +16,6 @@ local Enemies = require(Shared.Enemies)
 
 local Effects = require(script.Parent.Effects)
 local CombatService = require(script.Parent.CombatService)
-local Fury = require(script.Parent.Fury)
 
 local StreetGang = {}
 
@@ -100,10 +99,6 @@ local function swingAt(npc: Model, npcRoot: BasePart, target: Model)
 	end
 	hum:TakeDamage(applied)
 	Effects.damageNumber(tRoot.Position, applied, GANG_RED)
-	local victim = Players:GetPlayerFromCharacter(target)
-	if victim then
-		Fury.add(victim, applied * Fury.GAIN_TAKEN)
-	end
 end
 
 local function runBrain(npc: Model, hum: Humanoid, root: BasePart, home: Vector3)
