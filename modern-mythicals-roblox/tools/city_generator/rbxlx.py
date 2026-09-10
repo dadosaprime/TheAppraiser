@@ -56,6 +56,8 @@ class Part:
     transparency: float = 0.0
     anchored: bool = True
     lights: list[PointLight] = field(default_factory=list)
+    cls: str = "Part"  # e.g. "TrussPart" (climbable ladder)
+    extras: list[str] = field(default_factory=list)  # raw child Item XML
 
     def to_xml(self) -> str:
         px, py, pz = self.position
@@ -64,7 +66,7 @@ class Part:
         # Color3uint8 is packed as (r<<16)|(g<<8)|b; Roblox reads the low 24 bits.
         packed = (r << 16) | (g << 8) | b
         name = html.escape(self.name)
-        return f"""  <Item class="Part" referent="{_ref()}">
+        return f"""  <Item class="{self.cls}" referent="{_ref()}">
    <Properties>
     <string name="Name">{name}</string>
     <bool name="Anchored">{str(self.anchored).lower()}</bool>
@@ -82,6 +84,7 @@ class Part:
     </CoordinateFrame>
    </Properties>
 {chr(10).join(l.to_xml() for l in self.lights)}
+{chr(10).join(self.extras)}
   </Item>"""
 
 
@@ -99,6 +102,20 @@ _MATERIALS = {
     "Metal": 1088,
     "Fabric": 1312,
 }
+
+
+def proximity_prompt(action: str, object_text: str, distance: float = 9.0, hold: float = 0.4) -> str:
+    """Raw XML for a ProximityPrompt child (press E to interact)."""
+    return f"""   <Item class="ProximityPrompt" referent="{_ref()}">
+    <Properties>
+     <string name="Name">Prompt</string>
+     <string name="ActionText">{html.escape(action)}</string>
+     <string name="ObjectText">{html.escape(object_text)}</string>
+     <float name="MaxActivationDistance">{distance}</float>
+     <float name="HoldDuration">{hold}</float>
+     <bool name="RequiresLineOfSight">false</bool>
+    </Properties>
+   </Item>"""
 
 
 @dataclass

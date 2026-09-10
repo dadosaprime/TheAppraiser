@@ -13,7 +13,7 @@ from __future__ import annotations
 import random
 
 from plots import Plot
-from rbxlx import Part, PointLight
+from rbxlx import Part, PointLight, proximity_prompt
 
 FLOOR_HEIGHT = 14.0  # studs per floor
 BUILDING_DEPTH = 40.0
@@ -98,16 +98,17 @@ def _door_and_awning(plot: Plot, depth: float, rng: random.Random, neon_rgb: lis
     fz = _front_z(plot, depth)
     cx = plot.x + plot.width / 2
     o = _out(plot)
-    # Door.
-    parts.append(
-        Part(
-            name=f"door_{plot.index}",
-            position=(cx, 4.5, fz + o * 0.25),
-            size=(6, 9, 0.5),
-            color=(24, 20, 28),
-            material="Metal",
+    # Door (a slab on solid buildings; explorable ones have a real opening).
+    if not is_explorable(plot):
+        parts.append(
+            Part(
+                name=f"door_{plot.index}",
+                position=(cx, 4.5, fz + o * 0.25),
+                size=(6, 9, 0.5),
+                color=(24, 20, 28),
+                material="Metal",
+            )
         )
-    )
     if plot.type in ("CLUB", "BAR", "RESTAURANT"):
         # Awning over the door, in the venue's neon color when it has one.
         color = tuple(neon_rgb) if neon_rgb else (110, 30, 40)
@@ -244,15 +245,19 @@ def build_plot(plot: Plot, neon_palette: dict[str, list[int]], dim: bool = False
     height = plot.floors * FLOOR_HEIGHT
     depth = BUILDING_DEPTH + rng.uniform(-6, 6)
     color = _TYPE_COLOR.get(plot.type, (60, 60, 60))
-    parts.append(
-        Part(
-            name=f"{plot.type}_{plot.index}",
-            position=(plot.x + plot.width / 2, height / 2, plot.z),
-            size=(plot.width - 2, height, depth),
-            color=color,
-            material="Concrete" if plot.type != "WAREHOUSE" else "Metal",
+    explorable = is_explorable(plot)
+    if explorable:
+        parts.extend(build_explorable(plot, height, depth, rng))
+    else:
+        parts.append(
+            Part(
+                name=f"{plot.type}_{plot.index}",
+                position=(plot.x + plot.width / 2, height / 2, plot.z),
+                size=(plot.width - 2, height, depth),
+                color=color,
+                material="Concrete" if plot.type != "WAREHOUSE" else "Metal",
+            )
         )
-    )
     parts.extend(_windows(plot, height, depth, rng, dim))
 
     neon_rgb = neon_palette.get(plot.neon) if plot.neon else None
@@ -274,8 +279,9 @@ def build_plot(plot: Plot, neon_palette: dict[str, list[int]], dim: bool = False
             )
         )
 
-    # Rear: fire escape on the alley wall for anything two floors or taller.
-    if plot.floors >= 2 and plot.street == "COLLINS":
+    # Rear: decorative fire escape on the alley wall for solid buildings two
+    # floors or taller (explorable ones get a real, climbable one).
+    if plot.floors >= 2 and plot.street == "COLLINS" and not explorable:
         parts.extend(build_fire_escape(plot, height, depth))
 
     return parts
@@ -432,3 +438,151 @@ def build_cross_alley(x: float, z0: float, z1: float, width: float = 18.0) -> li
             material="Cobblestone",
         )
     ]
+
+
+# ── Explorable interiors ────────────────────────────────────────────────────
+# Some buildings are hollow: open floors joined by switchback stairs, a
+# climbable fire escape on the alley wall with a doorway onto each upper floor,
+# a ladder to the roof, and a loot crate on every level — bigger the higher up.
+
+_EXPLORE_CHANCE = {
+    "WAREHOUSE": 0.55,
+    "OFFICE": 0.45,
+    "CLUB": 0.35,
+    "BAR": 0.4,
+    "APTS": 0.3,
+    "SHOP": 0.25,
+    "RESTAURANT": 0.2,
+}
+
+
+def is_explorable(plot: Plot) -> bool:
+    if plot.explore is not None:
+        return plot.explore
+    if plot.floors < 2 or plot.type not in _EXPLORE_CHANCE:
+        return False
+    return _seeded("explore", plot.street, plot.index).random() < _EXPLORE_CHANCE[plot.type]
+
+
+def build_loot_crate(tag: str, tier: str, x: float, y: float, z: float) -> Part:
+    """A crate with a Press-E prompt. Name encodes the tier for LootService."""
+    color = {"S": (120, 92, 58), "M": (140, 104, 60), "L": (170, 130, 70)}[tier]
+    return Part(
+        name=f"LootCrate_{tier}_{tag}",
+        position=(x, y + 1.5, z),
+        size=(3, 3, 3),
+        color=color,
+        material="Wood",
+        extras=[proximity_prompt("Open", {"S": "Crate", "M": "Stash", "L": "Cache"}[tier])],
+    )
+
+
+def build_explorable(plot: Plot, height: float, depth: float, rng: random.Random) -> list[Part]:
+    parts: list[Part] = []
+    x0, x1 = plot.x + 1, plot.x + plot.width - 1
+    w = x1 - x0
+    cx = (x0 + x1) / 2
+    color = _TYPE_COLOR.get(plot.type, (60, 60, 60))
+    mat = "Concrete" if plot.type != "WAREHOUSE" else "Metal"
+    o = _out(plot)                       # toward the street
+    fz = plot.z - o * (-depth / 2)       # street wall z  (= plot.z + o*depth/2... keep explicit below)
+    fz = plot.z + o * (depth / 2)        # street wall
+    bz = plot.z - o * (depth / 2)        # alley wall
+    T = 1.0                              # wall thickness
+    tag = f"{plot.street}{plot.index}"
+
+    def wall(name, x, y, z, sx, sy, sz):
+        parts.append(Part(name=f"{name}_{tag}", position=(x, y, z), size=(sx, sy, sz), color=color, material=mat))
+
+    # Side walls.
+    wall("wallL", x0 + T / 2, height / 2, plot.z, T, height, depth)
+    wall("wallR", x1 - T / 2, height / 2, plot.z, T, height, depth)
+    # Street wall with a doorway gap in the middle.
+    gap = 8.0
+    seg = (w - gap) / 2
+    wall("wallF1", x0 + seg / 2, height / 2, fz, seg, height, T)
+    wall("wallF2", x1 - seg / 2, height / 2, fz, seg, height, T)
+    wall("wallFlintel", cx, height - (height - 10) / 2, fz, gap, height - 10, T)
+    # Alley wall: solid except a doorway column at the fire-escape x on each upper floor.
+    xfe = plot.x + plot.width * 0.65
+    col_w = 6.0
+    wall("wallB1", (x0 + (xfe - col_w / 2)) / 2, height / 2, bz, (xfe - col_w / 2) - x0, height, T)
+    wall("wallB2", ((xfe + col_w / 2) + x1) / 2, height / 2, bz, x1 - (xfe + col_w / 2), height, T)
+    wall("wallBg", xfe, FLOOR_HEIGHT / 2, bz, col_w, FLOOR_HEIGHT, T)  # ground floor solid
+    for f in range(1, plot.floors):
+        y_open_top = f * FLOOR_HEIGHT + 9.0
+        lintel_h = (f + 1) * FLOOR_HEIGHT - y_open_top
+        wall(f"wallBl{f}", xfe, y_open_top + lintel_h / 2, bz, col_w, lintel_h, T)
+
+    # Stairs: switchback along x next to the left wall; alternate direction per floor.
+    steps = 14
+    run = 1.5
+    stair_len = steps * run
+    zs = plot.z - o * (depth / 2 - 5)   # a strip near the alley wall
+    for f in range(0, plot.floors - 1):
+        base_y = f * FLOOR_HEIGHT + 0.5
+        forward = (f % 2 == 0)
+        xs = x0 + 3 if forward else x1 - 3
+        for i in range(1, steps + 1):
+            rise = i * 1.0
+            sx = xs + (i - 0.5) * run if forward else xs - (i - 0.5) * run
+            parts.append(Part(name=f"stair_{tag}_{f}_{i}", position=(sx, base_y + rise / 2, zs),
+                              size=(run, rise, 5), color=(70, 70, 76), material="Concrete"))
+        # Next floor's slab needs a hole over the stair run: handled in slabs below.
+
+    # Floor slabs (ground + uppers) with a stairwell hole, and the roof.
+    def slab(f: int, with_hole: bool):
+        y = f * FLOOR_HEIGHT
+        name = f"slab_{tag}_{f}" if f < plot.floors else f"roof_{tag}"
+        zc_lo, zc_hi = zs - 3.5, zs + 3.5   # stair strip
+        if not with_hole:
+            parts.append(Part(name=name, position=(cx, y, plot.z), size=(w, 1, depth), color=(52, 52, 56), material="Concrete"))
+            return
+        # Strip along z outside the stair band.
+        z_lo_edge, z_hi_edge = plot.z - depth / 2, plot.z + depth / 2
+        a0, a1 = z_lo_edge, min(zc_lo, z_hi_edge)
+        b0, b1 = max(zc_hi, z_lo_edge), z_hi_edge
+        if a1 > a0:
+            parts.append(Part(name=name + "a", position=(cx, y, (a0 + a1) / 2), size=(w, 1, a1 - a0), color=(52, 52, 56), material="Concrete"))
+        if b1 > b0:
+            parts.append(Part(name=name + "b", position=(cx, y, (b0 + b1) / 2), size=(w, 1, b1 - b0), color=(52, 52, 56), material="Concrete"))
+        # The stair band itself, minus the run the stairs arrive through.
+        prev = f - 1
+        forward = (prev % 2 == 0)
+        hole_x0 = (x0 + 3) if forward else (x1 - 3 - stair_len)
+        hole_x1 = hole_x0 + stair_len
+        if hole_x0 > x0:
+            parts.append(Part(name=name + "c", position=((x0 + hole_x0) / 2, y, zs), size=(hole_x0 - x0, 1, zc_hi - zc_lo), color=(52, 52, 56), material="Concrete"))
+        if x1 > hole_x1:
+            parts.append(Part(name=name + "d", position=((hole_x1 + x1) / 2, y, zs), size=(x1 - hole_x1, 1, zc_hi - zc_lo), color=(52, 52, 56), material="Concrete"))
+
+    slab(0, False)
+    for f in range(1, plot.floors):
+        slab(f, True)
+    slab(plot.floors, False)  # roof, no hole; reached by the exterior ladder
+
+    # Exterior fire escape: climbable truss ladder + a platform at each upper floor
+    # doorway. Then a truss from the top platform up past the roof edge.
+    bz_out = bz - o * 2.0
+    for f in range(1, plot.floors):
+        parts.append(Part(name=f"fe_{tag}_p{f}", position=(xfe, f * FLOOR_HEIGHT + 0.5, bz - o * 2.5),
+                          size=(9, 0.6, 5), color=(46, 46, 50), material="Metal"))
+    ladder_h = int(plot.floors * FLOOR_HEIGHT + 4)
+    ladder_h += ladder_h % 2
+    parts.append(Part(name=f"fe_{tag}_ladder", position=(xfe + 5.5, ladder_h / 2, bz_out),
+                      size=(2, ladder_h, 2), color=(40, 40, 44), material="Metal", cls="TrussPart"))
+
+    # Interior lights: one dim warm bulb per floor.
+    for f in range(plot.floors):
+        parts.append(Part(name=f"bulb_{tag}_{f}", position=(cx, f * FLOOR_HEIGHT + FLOOR_HEIGHT - 2, plot.z),
+                          size=(0.8, 0.5, 0.8), color=(255, 205, 140), material="Neon",
+                          lights=[PointLight(color=(255, 195, 130), brightness=0.9, range=max(w, depth) * 0.9)]))
+
+    # Loot: ground floor small, each upper floor medium, roof large.
+    lx = cx + o * 0 + (w / 2 - 6)
+    lz = plot.z + o * (depth / 2 - 6)
+    parts.append(build_loot_crate(f"{tag}_g", "S", lx, 1.0, lz))
+    for f in range(1, plot.floors):
+        parts.append(build_loot_crate(f"{tag}_f{f}", "M", lx - rng.uniform(0, w * 0.4), f * FLOOR_HEIGHT + 0.5, lz))
+    parts.append(build_loot_crate(f"{tag}_roof", "L", cx - rng.uniform(-w * 0.3, w * 0.3), plot.floors * FLOOR_HEIGHT + 0.5, plot.z))
+    return parts

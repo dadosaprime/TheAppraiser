@@ -26,6 +26,7 @@ class Plot:
     neon: str | None = None
     crowd: float = 0.0     # 0-1, drives NPC density and audio
     landmark: str | None = None  # None for procedural plots
+    explore: bool | None = None  # force an enterable interior on/off; None = seeded rule
 
     # Filled in during layout.
     x: float = 0.0         # start position along the spline
