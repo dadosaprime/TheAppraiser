@@ -23,7 +23,7 @@ local Classes: { [Types.ClassId]: Types.Class } = {
 	Werewolf = {
 		id = "Werewolf",
 		displayName = "Werewolf",
-		startingPower = "Shape Shift",
+		startingPower = "Claws",
 		role = "Form-swapping bruiser — sustain and pressure. Trades survivability for raw output when shifted.",
 		mythologicalAnchor = "Lycanthropy proper — the turning, the pack howl, scent, claws that hold stone.",
 		baseHealth = SoulRanks.BASE_HEALTH,
@@ -31,8 +31,9 @@ local Classes: { [Types.ClassId]: Types.Class } = {
 		-- Werewolves spend FURY (builds by dealing/taking damage, drains while shifted),
 		-- not Soul Pool. This is the only class whose resource rewards staying in the fight.
 		resource = "Fury",
-		trees = { "TheTurning", "RedRend", "HuntersHowl", "BloodScent", "CragClimb" },
-		-- Slot 1 is the shift, not an attack: left-click swings the claws instead.
+		-- Claws on slot 1 (they BUILD Fury), the shift on slot 2 (it SPENDS it).
+		-- Playtest decision: the first button should be the one you press first.
+		trees = { "RedRend", "TheTurning", "HuntersHowl", "BloodScent", "CragClimb" },
 		attackTree = "RedRend",
 	},
 

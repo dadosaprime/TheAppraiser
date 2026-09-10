@@ -136,8 +136,10 @@ local function onCharacter(player: Player, character: Model)
 	end)
 	if GameConfig.Playtest.WerewolfStartsShifted and profile and profile.class == "Werewolf" then
 		task.delay(1, function()
-			if character.Parent and player.Character == character then
-				AbilityService.activate(player, 1, nil)
+			local class = Classes.get("Werewolf")
+			local shiftSlot = class and table.find(class.trees, "TheTurning")
+			if shiftSlot and character.Parent and player.Character == character then
+				AbilityService.activate(player, shiftSlot, nil)
 			end
 		end)
 	end

@@ -100,7 +100,7 @@ PerkTrees.Widdershins = {
 PerkTrees.TheTurning = {
 	id = "TheTurning",
 	ability = "Shape Shift",
-	slot = 1,
+	slot = 2,
 	role = "the shift",
 	summary = "The class identity, on one button. Shifted = bigger, stronger, and easier to hit (fire/electric weakness).",
 	ranks = {
@@ -114,7 +114,7 @@ PerkTrees.TheTurning = {
 PerkTrees.RedRend = {
 	id = "RedRend",
 	ability = "Claw Combo → Rend → Bite",
-	slot = 2,
+	slot = 1,
 	role = "offense",
 	summary = "Two simultaneous claw attacks while shifted, building into bleed and a healing finisher.",
 	ranks = {
