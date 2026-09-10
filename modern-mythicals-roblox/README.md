@@ -40,7 +40,8 @@ modern-mythicals-roblox/
 │   ├── shared/                 # ReplicatedStorage.Shared — data + types + net registry
 │   ├── server/                 # ServerScriptService.Server — authoritative game logic
 │   └── client/                 # StarterPlayerScripts.Client — input + HUD
-├── tools/city_generator/       # Python: OSM → plots → .rbxlx
+├── map/                        # generated city (.rbxmx) — output of the generator, gitignored
+├── tools/city_generator/       # Python: OSM → plots → .rbxmx
 └── .github/workflows/ci.yml    # lint → build → (publish, gated)
 ```
 
@@ -57,11 +58,19 @@ wally install
 # 3. Build a place file
 rojo build -o ModernMythicals.rbxl
 
-# 4. Generate the Miami map (writes a .rbxlx you can merge/import)
+# 4. Generate the Miami map into map/ (Rojo picks it up as Workspace.Map)
 cd tools/city_generator
 pip install -r requirements.txt
-python generate.py --config config/miami_club_district.json --out ../../build/miami.rbxlx
+python generate.py --config config/miami_club_district.json --out ../../map/GeneratedCity.rbxmx
+cd ../..
+
+# 5. Build again — the place now has ground, a spawn point, the city, and the
+#    night lighting, so it is playable the moment it opens in Studio.
+rojo build -o build/ModernMythicals.rbxl
 ```
+
+Run steps 3–5 in that order (generate the map before the final build). The
+`.rbxl` opens directly in Studio — no Rojo plugin required for a first test.
 
 To iterate live: `rojo serve` and connect from Studio (optional), or publish headlessly via the
 CI pipeline (see `.github/workflows/ci.yml`).

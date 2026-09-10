@@ -47,7 +47,7 @@ jobs:
         working-directory: modern-mythicals-roblox/tools/city_generator
         run: |
           pip install -r requirements.txt
-          python generate.py --config config/miami_club_district.json --out ../../build/miami.rbxlx
+          python generate.py --config config/miami_club_district.json --out ../../map/GeneratedCity.rbxmx
 
       - name: Rojo build
         run: rojo build -o build/ModernMythicals.rbxl
@@ -58,7 +58,7 @@ jobs:
           name: place-files
           path: |
             modern-mythicals-roblox/build/ModernMythicals.rbxl
-            modern-mythicals-roblox/build/miami.rbxlx
+            modern-mythicals-roblox/map/GeneratedCity.rbxmx
 
   publish:
     needs: lint-and-build

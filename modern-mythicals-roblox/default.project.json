@@ -9,20 +9,12 @@
 			"$className": "ReplicatedStorage",
 			"Shared": {
 				"$path": "src/shared"
-			},
-			"Packages": {
-				"$path": "Packages",
-				"$optional": true
 			}
 		},
 		"ServerScriptService": {
 			"$className": "ServerScriptService",
 			"Server": {
 				"$path": "src/server"
-			},
-			"ServerPackages": {
-				"$path": "ServerPackages",
-				"$optional": true
 			}
 		},
 		"StarterPlayer": {
@@ -40,6 +32,51 @@
 				"StreamingEnabled": true,
 				"StreamingTargetRadius": 1024,
 				"FilteringEnabled": true
+			},
+			"Baseplate": {
+				"$className": "Part",
+				"$properties": {
+					"Anchored": true,
+					"Size": [
+						2400,
+						16,
+						1400
+					],
+					"Position": [
+						900,
+						-8,
+						0
+					],
+					"Color": [
+						0.18,
+						0.18,
+						0.22
+					],
+					"Material": "Concrete",
+					"TopSurface": "Smooth",
+					"BottomSurface": "Smooth"
+				}
+			},
+			"SpawnLocation": {
+				"$className": "SpawnLocation",
+				"$properties": {
+					"Anchored": true,
+					"Size": [
+						12,
+						1,
+						12
+					],
+					"Position": [
+						900,
+						0.5,
+						-300
+					],
+					"Duration": 0,
+					"Neutral": true
+				}
+			},
+			"Map": {
+				"$path": "map"
 			}
 		},
 		"Lighting": {
