@@ -135,6 +135,8 @@ def generate(config_path: str, out_path: str, use_osm: bool = False) -> int:
     if use_osm:
         _osm_pass(config, place)
 
+    _clear_fire_escapes(place)
+
     # Budget check — the real ceiling is instance count, and it's a phone budget.
     if place.count() > config.part_budget:
         print(
@@ -148,6 +150,32 @@ def generate(config_path: str, out_path: str, use_osm: bool = False) -> int:
     print(f"Wrote {place.count()} parts → {out_path}")
     print(f"District: {config.name}  ({config.strip_length}×{config.depth} studs, budget {config.part_budget})")
     return 0
+
+
+def _clear_fire_escapes(place: Place) -> None:
+    """Drop clutter, dumpsters and cars that sit inside a fire escape or an
+    interior stair (the steps, landings and the head-room above them)."""
+    def box(p):
+        x, y, z = p.position
+        sx, sy, sz = p.size
+        return (x - sx / 2, x + sx / 2, y - sy / 2, y + sy / 2 + 6.0, z - sz / 2, z + sz / 2)
+    fe = [box(p) for p in place.parts if p.name.startswith(("fe_", "stair_"))]
+    def hit(b):
+        return any(b[0] < f[1] and b[1] > f[0] and b[2] < f[3] and b[3] > f[2] and b[4] < f[5] and b[5] > f[4] for f in fe)
+    keep = []
+    dropped = 0
+    for p in place.parts:
+        if p.name.startswith(("fe_", "stair_")) or p.cls == "TrussPart":
+            keep.append(p)
+            continue
+        movable = p.name.startswith(("dumpster_", "ac_", "bench", "can_", "ocan_", "cardboard_", "cart_", "fence_", "hydrant_", "pallet_", "puddle_", "rope_", "trash_", "wire_", "car_", "lamp_", "palm_"))
+        if movable and hit(box(p)):
+            dropped += 1
+            continue
+        keep.append(p)
+    place.parts = keep
+    if dropped:
+        print(f"Cleared {dropped} clutter parts out of fire escapes")
 
 
 def _osm_pass(config: DistrictConfig, place: Place) -> None:

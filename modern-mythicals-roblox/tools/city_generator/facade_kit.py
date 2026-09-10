@@ -66,6 +66,13 @@ def _out(plot: Plot) -> float:
     return -1.0 if plot.side == "INLAND" else 1.0
 
 
+def _face_z(plot: Plot, depth: float) -> float:
+    """World z of the street wall's OUTER surface. Solid buildings are one box
+    whose face is at _front_z; explorable ones have a 1-stud wall centred on
+    it, so the surface sits half a stud further out."""
+    return _front_z(plot, depth) + _out(plot) * (0.5 if is_explorable(plot) else 0.0)
+
+
 # ── Buildings ───────────────────────────────────────────────────────────────
 
 def _windows(plot: Plot, height: float, depth: float, rng: random.Random, dim: bool) -> list[Part]:
@@ -73,16 +80,21 @@ def _windows(plot: Plot, height: float, depth: float, rng: random.Random, dim: b
     lit_frac, lit_color = _WINDOW_LIT.get(plot.type, (0.3, (255, 210, 150)))
     if dim:
         lit_frac *= 0.4
-    fz = _front_z(plot, depth) + _out(plot) * 0.2
+    fz = _face_z(plot, depth) + _out(plot) * 0.2
     usable = plot.width - 10
     per_floor = max(1, int(usable // 9))
     step = usable / per_floor
+    cx = plot.x + plot.width / 2
+    # Ground floor: keep clear of the door, the awning/sign, or the roll-up.
+    clear = 9.0 if plot.type in ("CLUB", "BAR", "RESTAURANT", "WAREHOUSE") else 5.5
     for floor in range(plot.floors):
-        y = floor * FLOOR_HEIGHT + FLOOR_HEIGHT * 0.55
+        y = floor * FLOOR_HEIGHT + FLOOR_HEIGHT * 0.5
         if floor == 0 and plot.type in ("CLUB", "BAR", "RESTAURANT", "SHOP"):
-            y = FLOOR_HEIGHT * 0.62  # storefront glazing sits a little higher
+            y = FLOOR_HEIGHT * 0.54  # storefront glazing sits a little higher
         for i in range(per_floor):
             x = plot.x + 5 + step * (i + 0.5)
+            if floor == 0 and abs(x - cx) < clear + 2.1:
+                continue
             lit = rng.random() < lit_frac
             parts.append(
                 Part(
@@ -98,15 +110,17 @@ def _windows(plot: Plot, height: float, depth: float, rng: random.Random, dim: b
 
 def _door_and_awning(plot: Plot, depth: float, rng: random.Random, neon_rgb: list[int] | None) -> list[Part]:
     parts: list[Part] = []
-    fz = _front_z(plot, depth)
+    fz = _face_z(plot, depth)
     cx = plot.x + plot.width / 2
     o = _out(plot)
-    # Door (a slab on solid buildings; explorable ones have a real opening).
-    if not is_explorable(plot):
+    explorable = is_explorable(plot)
+    # Door (a slab on solid buildings; explorable ones have a real opening;
+    # warehouses use the roll-up instead).
+    if not explorable and plot.type != "WAREHOUSE":
         parts.append(
             Part(
                 name=f"door_{plot.index}",
-                position=(cx, 4.5, fz + o * 0.25),
+                position=(cx, 5.4, fz + o * 0.25),
                 size=(6, 9, 0.5),
                 color=(24, 20, 28),
                 material="Metal",
@@ -118,7 +132,7 @@ def _door_and_awning(plot: Plot, depth: float, rng: random.Random, neon_rgb: lis
         parts.append(
             Part(
                 name=f"awning_{plot.index}",
-                position=(cx, 10.2, fz + o * 2.2),
+                position=(cx, 10.9, fz + o * 2.3),
                 size=(min(14, plot.width - 6), 0.6, 4.5),
                 color=color,
                 material="Fabric",
@@ -129,7 +143,7 @@ def _door_and_awning(plot: Plot, depth: float, rng: random.Random, neon_rgb: lis
         parts.append(
             Part(
                 name=f"sign_{plot.index}",
-                position=(cx, 12.6, fz + o * 0.6),
+                position=(cx, 13.2, fz + o * 0.45),
                 size=(min(16, plot.width - 4), 3, 0.8),
                 color=color if neon_rgb else (40, 36, 44),
                 material="Neon" if neon_rgb else "Metal",
@@ -140,19 +154,19 @@ def _door_and_awning(plot: Plot, depth: float, rng: random.Random, neon_rgb: lis
         parts.append(
             Part(
                 name=f"porch_{plot.index}",
-                position=(cx + 4, 9.5, fz + o * 0.6),
+                position=(cx + 4, 9.5, fz + o * 0.35),
                 size=(0.8, 0.8, 0.6),
                 color=(255, 210, 140),
                 material="Neon",
                 lights=[PointLight(color=(255, 200, 130), brightness=1.1, range=18)],
             )
         )
-    elif plot.type == "WAREHOUSE":
-        # Roll-up loading door.
+    elif plot.type == "WAREHOUSE" and not explorable:
+        # Roll-up loading door (explorable warehouses keep their real opening).
         parts.append(
             Part(
                 name=f"rollup_{plot.index}",
-                position=(cx, 6, fz + o * 0.3),
+                position=(cx, 6.9, fz + o * 0.35),
                 size=(16, 12, 0.6),
                 color=(44, 46, 50),
                 material="Metal",
@@ -268,13 +282,13 @@ def build_plot(plot: Plot, neon_palette: dict[str, list[int]], dim: bool = False
 
     # Roofline neon band on the trendy strip (Collins only; Abbott gets none).
     if neon_rgb and plot.street == "COLLINS":
-        band_z = _front_z(plot, depth) + _out(plot) * 0.3
+        band_z = _face_z(plot, depth) + _out(plot) * 0.3
         bright = 1.0 if not dim else 0.45
         c = tuple(int(v * bright) for v in neon_rgb)
         parts.append(
             Part(
                 name=f"neon_{plot.index}",
-                position=(plot.x + plot.width / 2, height - 3, band_z),
+                position=(plot.x + plot.width / 2, height - 3 if plot.floors > 1 else height + 0.75, band_z),
                 size=(plot.width - 4, 1.5, 0.5),
                 color=c,
                 material="Neon",
@@ -506,16 +520,23 @@ def build_explorable(plot: Plot, height: float, depth: float, rng: random.Random
     wall("wallF1", x0 + seg / 2, height / 2, fz, seg, height, T)
     wall("wallF2", x1 - seg / 2, height / 2, fz, seg, height, T)
     wall("wallFlintel", cx, height - (height - 10) / 2, fz, gap, height - 10, T)
-    # Alley wall: solid except a doorway column at the fire-escape x on each upper floor.
-    xfe = min(max(plot.x + plot.width * 0.65, x0 + 11), x1 - 11)
+    # Alley wall, built floor by floor. Upper floors get a doorway onto that
+    # floor's fire-escape landing; the landing alternates ends, so the door
+    # x alternates too (see fe_door_x below). Ground floor is solid.
+    fe_xs = min(max(plot.x + plot.width * 0.62 - 10.5, x0 + 7.0), x1 - 28.0)   # flight start
+    fe_xe = fe_xs + 21.0                                                        # flight end
+    def fe_door_x(f: int) -> float:
+        # Level f landing is where flight f-1 arrives: right end when f is odd.
+        return fe_xe + 3.0 if f % 2 == 1 else fe_xs - 3.0
     col_w = 6.0
-    wall("wallB1", (x0 + (xfe - col_w / 2)) / 2, height / 2, bz, (xfe - col_w / 2) - x0, height, T)
-    wall("wallB2", ((xfe + col_w / 2) + x1) / 2, height / 2, bz, x1 - (xfe + col_w / 2), height, T)
-    wall("wallBg", xfe, FLOOR_HEIGHT / 2, bz, col_w, FLOOR_HEIGHT, T)  # ground floor solid
+    wall("wallB0", cx, FLOOR_HEIGHT / 2, bz, w, FLOOR_HEIGHT, T)
     for f in range(1, plot.floors):
-        y_open_top = f * FLOOR_HEIGHT + 9.0
-        lintel_h = (f + 1) * FLOOR_HEIGHT - y_open_top
-        wall(f"wallBl{f}", xfe, y_open_top + lintel_h / 2, bz, col_w, lintel_h, T)
+        y0 = f * FLOOR_HEIGHT
+        dx = fe_door_x(f)
+        wall(f"wallB{f}a", (x0 + (dx - col_w / 2)) / 2, y0 + FLOOR_HEIGHT / 2, bz, (dx - col_w / 2) - x0, FLOOR_HEIGHT, T)
+        wall(f"wallB{f}b", ((dx + col_w / 2) + x1) / 2, y0 + FLOOR_HEIGHT / 2, bz, x1 - (dx + col_w / 2), FLOOR_HEIGHT, T)
+        lintel_h = FLOOR_HEIGHT - 9.0
+        wall(f"wallB{f}l", dx, y0 + 9.0 + lintel_h / 2, bz, col_w, lintel_h, T)
 
     # Stairs: a real switchback in two side-by-side strips near the alley
     # wall. Even flights climb +x in strip A, odd flights climb -x in strip B,
@@ -568,39 +589,47 @@ def build_explorable(plot: Plot, height: float, depth: float, rng: random.Random
         slab(f, True)
     slab(plot.floors, False)  # roof, no hole; reached by the exterior ladder
 
-    # Exterior fire escape, zig-zag style. Each floor has its own truss
-    # segment, and the segments alternate between two columns (A left, B
-    # right of the doorway). You climb on the OUTER face of a segment; it
-    # ends two studs above the next landing, so topping out steps you onto
-    # the landing between the truss and the wall. Nothing is ever above the
-    # face you climb: the next segment starts from a small pad on the other
-    # column, and that column carried no truss on the floor below.
-    col = {0: xfe - 5.0, 1: xfe + 5.0}          # A, B
-    tz = bz - o * 6.5                            # truss centre (2 deep: 5.5..7.5 out)
-    land_z, land_d = bz - o * 3.0, 5.0           # inner landing: wall face .. truss
-    pad_z, pad_d = bz - o * 9.5, 4.0             # outer pad: beyond the truss
-    seg_h = FLOOR_HEIGHT + 2.0                   # tops out 2 studs above the landing
-    for f in range(plot.floors):
-        c = col[f % 2]
-        base = 0.0 if f == 0 else f * FLOOR_HEIGHT + 0.8
-        parts.append(Part(name=f"fe_{tag}_ladder{f}", position=(c, base + seg_h / 2, tz),
-                          size=(2, seg_h, 2), color=(40, 40, 44), material="Metal", cls="TrussPart"))
+    # Exterior fire escape: real stairs, the way a Miami fire escape looks.
+    # Two strips hang off the alley wall (A against the wall, B outside it).
+    # Even flights climb +x in strip A, odd flights climb -x in strip B, and a
+    # landing at each end spans both strips. The doorway for each floor opens
+    # onto that floor's landing. Nothing is ever above a flight but the flight
+    # two levels up, so you can't get stuck, and every landing is one piece.
+    steps, run = 14, 1.5
+    zA = bz - o * 2.6                         # strip A centre (0.6 .. 4.6 out)
+    zB = bz - o * 6.6                         # strip B centre (4.6 .. 8.6 out)
+    z_out = bz - o * 8.6
+    land_zc = (bz - o * 0.6 + z_out) / 2      # landings span both strips
+    land_d = 8.0
+    for f in range(plot.floors):              # flight f: level f → f+1 (last one reaches the roof)
+        base_y = 0.0 if f == 0 else f * FLOOR_HEIGHT + 0.8
+        forward = (f % 2 == 0)
+        zf = zA if forward else zB
+        for i in range(1, steps + 1):
+            rise = i * 1.0
+            sx = fe_xs + (i - 0.5) * run if forward else fe_xe - (i - 0.5) * run
+            parts.append(Part(name=f"fe_{tag}_s{f}_{i}", position=(sx, base_y + rise / 2, zf),
+                              size=(run, rise, 4.0), color=(52, 52, 56), material="Metal"))
+        # Sloped rail approximated by three short horizontal rails on the open side.
+        zr = (zA - o * 1.85) if forward else (zB - o * 2.15)   # A: strip edge; B: outer edge
+        for k in range(3):
+            t0, t1 = k / 3, (k + 1) / 3
+            xm = fe_xs + (t0 + t1) / 2 * 21.0 if forward else fe_xe - (t0 + t1) / 2 * 21.0
+            ym = base_y + (t0 + t1) / 2 * FLOOR_HEIGHT + 2.6
+            parts.append(Part(name=f"fe_{tag}_r{f}_{k}", position=(xm, ym, zr),
+                              size=(7.0, 0.3, 0.3), color=(40, 40, 44), material="Metal"))
     for f in range(1, plot.floors + 1):
         y = f * FLOOR_HEIGHT + 0.5
-        # Inner landing spans both columns and the doorway.
-        parts.append(Part(name=f"fe_{tag}_land{f}", position=(xfe, y, land_z),
-                          size=(20, 0.6, land_d), color=(46, 46, 50), material="Metal"))
-        # Outer pad only under the column whose segment STARTS here.
-        if f < plot.floors:
-            c = col[f % 2]
-            parts.append(Part(name=f"fe_{tag}_pad{f}", position=(c, y, pad_z),
-                              size=(6, 0.6, pad_d), color=(46, 46, 50), material="Metal"))
-    # Railing on the open end of each landing so you don't walk off the far side.
-    for f in range(1, plot.floors + 1):
-        y = f * FLOOR_HEIGHT + 0.5
-        for sx in (xfe - 10 + 0.15, xfe + 10 - 0.15):
-            parts.append(Part(name=f"fe_{tag}_rail{f}_{int(sx)}", position=(sx, y + 1.5, land_z),
-                              size=(0.3, 2.4, land_d), color=(40, 40, 44), material="Metal"))
+        right = (f % 2 == 1)
+        lx0, lx1 = (fe_xe, fe_xe + 6.0) if right else (fe_xs - 6.0, fe_xs)
+        parts.append(Part(name=f"fe_{tag}_land{f}", position=((lx0 + lx1) / 2, y, land_zc),
+                          size=(lx1 - lx0, 0.6, land_d), color=(46, 46, 50), material="Metal"))
+        # Rails: outer edge and the end of the landing.
+        parts.append(Part(name=f"fe_{tag}_lr{f}", position=((lx0 + lx1) / 2, y + 1.5, z_out + o * 0.15),
+                          size=(lx1 - lx0, 2.4, 0.3), color=(40, 40, 44), material="Metal"))
+        ex = lx1 - 0.15 if right else lx0 + 0.15
+        parts.append(Part(name=f"fe_{tag}_le{f}", position=(ex, y + 1.5, land_zc),
+                          size=(0.3, 2.4, land_d), color=(40, 40, 44), material="Metal"))
 
     # Interior lights: one dim warm bulb per floor.
     for f in range(plot.floors):
