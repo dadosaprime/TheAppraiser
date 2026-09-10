@@ -52,6 +52,7 @@ type Profile = {
 	perks: { [string]: number },
 	crossoverAccess: { [string]: boolean },
 	cosmetics: { [string]: boolean },
+	equipped: { [string]: string },
 	stats: { nightsPlayed: number, enemiesFelled: number, arenaWins: number },
 }
 
@@ -71,6 +72,7 @@ local function defaultProfile(): Profile
 		perks = {},
 		crossoverAccess = {},
 		cosmetics = {},
+		equipped = {},
 		stats = { nightsPlayed = 0, enemiesFelled = 0, arenaWins = 0 },
 	}
 end

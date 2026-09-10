@@ -52,7 +52,8 @@ export type PlayerProfile = {
 	perks: { [string]: number },
 	-- Crossover trees the player has bought ACCESS to (Robux). Ranks still cost Shards.
 	crossoverAccess: { [string]: boolean },
-	cosmetics: { [string]: boolean },
+	cosmetics: { [string]: boolean }, -- owned skin ids
+	equipped: { [string]: string }, -- category -> skin id
 	stats: {
 		nightsPlayed: number,
 		enemiesFelled: number,

@@ -18,6 +18,8 @@ Net.Definitions = {
 	PurchaseBox = "RemoteFunction", -- buy the next Soul-rank box with shards
 	PurchasePerk = "RemoteFunction", -- buy the next rank of a tree
 	RequestProfile = "RemoteFunction", -- initial state sync
+	BuySkin = "RemoteFunction", -- store: buy a skin (prompts Robux, or free-grants in playtest)
+	EquipSkin = "RemoteFunction", -- store: equip/unequip an owned skin
 
 	-- Server → client
 	ProfileUpdated = "RemoteEvent", -- pushes a fresh PlayerProfile

@@ -43,6 +43,9 @@ GameConfig.Playtest = {
 	-- Werewolves spawn already shifted and the shift never expires (toggle
 	-- still works). Off = human form is the wind-up, per the design doc.
 	WerewolfStartsShifted = false,
+	-- Until Developer Products exist (game must be published), the store grants
+	-- skins for free so the buy/equip flow can be tested. Turn OFF for launch.
+	FreeSkins = true,
 }
 
 -- ── Spawning (rotating hot zones) ──────────────────────────────────────────

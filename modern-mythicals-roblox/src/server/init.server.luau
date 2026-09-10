@@ -25,6 +25,8 @@ local TrainingDummies = require(script.TrainingDummies)
 local StreetGang = require(script.StreetGang)
 local LootService = require(script.LootService)
 local SoulService = require(script.SoulService)
+local CosmeticService = require(script.CosmeticService)
+local StoreService = require(script.StoreService)
 
 -- ── Start services ──────────────────────────────────────────────────────────
 DataService.init()
@@ -34,6 +36,8 @@ TerrainGenerator.init()
 TrainingDummies.init()
 StreetGang.init()
 LootService.init()
+CosmeticService.init()
+StoreService.init()
 
 -- ── Push helpers: send fresh profile to a client ────────────────────────────
 local function pushProfile(player: Player, profile: any)

@@ -9,9 +9,11 @@ local Net = require(Shared.Net)
 local HUD = require(script.HUD)
 local HotbarController = require(script.HotbarController)
 local ClassSelect = require(script.ClassSelect)
+local StoreUI = require(script.StoreUI)
 
 HUD.build()
 HotbarController.start()
+StoreUI.start(HUD.toast)
 
 HotbarController.onFeedback = function(slot, feedback)
 	HUD.flashSlot(slot, feedback)
@@ -26,6 +28,7 @@ local function applyProfile(profile: any)
 		return
 	end
 	HUD.update(profile)
+	StoreUI.setProfile(profile)
 	HotbarController.currentClass = profile.class
 	if profile.class == nil then
 		ClassSelect.show(function(id)

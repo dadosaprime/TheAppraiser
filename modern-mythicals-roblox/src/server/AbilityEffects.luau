@@ -15,12 +15,14 @@ local InsertService = game:GetService("InsertService")
 local Shared = game:GetService("ReplicatedStorage").Shared
 local GameConfig = require(Shared.GameConfig)
 local AssetIds = require(Shared.AssetIds)
+local Skins = require(Shared.Skins)
 
 local Effects = require(script.Parent.Effects)
 local CombatService = require(script.Parent.CombatService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local SpawnService = require(script.Parent.SpawnService)
 local SoulService = require(script.Parent.SoulService)
+local DataService = require(script.Parent.DataService)
 
 export type Ctx = {
 	player: Player,
@@ -40,6 +42,17 @@ local BLOOD = Color3.fromRGB(200, 20, 40)
 local STEEL = Color3.fromRGB(220, 225, 240)
 local BEAST = Color3.fromRGB(255, 60, 60)
 local VOID = Color3.fromRGB(90, 60, 140)
+
+-- Element skins recolor a class's effects. Look up the caster's equipped
+-- element skin for an override; fall back to the class default.
+local DEFAULT_COLORS: { [string]: Color3 } = { FIRE = FIRE, ELECTRIC = ELECTRIC, BLOOD = BLOOD, STEEL = STEEL, BEAST = BEAST, VOID = VOID }
+local function C(ctx: Ctx, key: string): Color3
+	local profile = DataService.get(ctx.player)
+	local skinId = profile and profile.equipped and profile.equipped.element
+	local skin = if skinId then Skins.get(skinId) else nil
+	local c = skin and skin.colors and skin.colors[key]
+	return c or DEFAULT_COLORS[key]
+end
 
 -- ── Targeting helpers ───────────────────────────────────────────────────────
 
@@ -277,11 +290,11 @@ end
 AbilityEffects.Emberhand = function(ctx)
 	Effects.animate(ctx.character, "cast", 1.6)
 	local dmg = 22 + 6 * ctx.rank
-	bolt(ctx, FIRE, 80, 140, dmg, "Fire", 1.0)
+	bolt(ctx, C(ctx, "FIRE"), 80, 140, dmg, "Fire", 1.0)
 	if ctx.rank >= 4 then
 		task.delay(0.12, function()
 			if ctx.character.Parent then
-				bolt(ctx, FIRE, 80, 140, dmg, "Fire", 1.0)
+				bolt(ctx, C(ctx, "FIRE"), 80, 140, dmg, "Fire", 1.0)
 			end
 		end)
 	end
@@ -291,12 +304,12 @@ end
 AbilityEffects.Conflagration = function(ctx)
 	Effects.animate(ctx.character, "cast", 1.1)
 	local dmg = 60 + 10 * ctx.rank
-	bolt(ctx, FIRE, 55, 110, dmg, "Fire", 1.6, function(pos, model)
+	bolt(ctx, C(ctx, "FIRE"), 55, 110, dmg, "Fire", 1.6, function(pos, model)
 		if ctx.rank >= 2 then
-			Effects.burst(pos, FIRE, 10, 0.5)
+			Effects.burst(pos, C(ctx, "FIRE"), 10, 0.5)
 			for _, m in targetsInRadius(pos, 10, ctx.character) do
 				if m ~= model then
-					hit(m, dmg * 0.5, "Fire", ctx.character, FIRE)
+					hit(m, dmg * 0.5, "Fire", ctx.character, C(ctx, "FIRE"))
 				end
 			end
 		end
@@ -323,7 +336,7 @@ AbilityEffects.WitchfireAegis = function(ctx)
 	ring.Shape = Enum.PartType.Ball
 	ring.Size = Vector3.new(7.5, 7.5, 7.5)
 	ring.Material = Enum.Material.Neon
-	ring.Color = FIRE
+	ring.Color = C(ctx, "FIRE")
 	ring.Transparency = 0.72
 	ring.CanCollide = false
 	ring.CanQuery = false
@@ -336,13 +349,13 @@ AbilityEffects.WitchfireAegis = function(ctx)
 	weld.Part1 = ring
 	weld.Parent = ring
 	local light = Instance.new("PointLight")
-	light.Color = FIRE
+	light.Color = C(ctx, "FIRE")
 	light.Brightness = 2.2
 	light.Range = 16
 	light.Shadows = false
 	light.Parent = ring
 	ring.Parent = ctx.character
-	Effects.burst(ctx.root.Position, FIRE, 5, 0.4)
+	Effects.burst(ctx.root.Position, C(ctx, "FIRE"), 5, 0.4)
 
 	setTimed(ctx, "aegis", math.huge, function()
 		SoulService.unlock(ctx.player)
@@ -353,7 +366,7 @@ AbilityEffects.WitchfireAegis = function(ctx)
 end
 
 AbilityEffects.Widdershins = function(ctx)
-	Effects.flash(ctx.root, VOID, 2, 12, 0.4)
+	Effects.flash(ctx.root, C(ctx, "VOID"), 2, 12, 0.4)
 	ctx.root.AssemblyLinearVelocity = Vector3.new(0, 45 + 5 * ctx.rank, 0) + flatForward(ctx) * 10
 	return 4
 end
@@ -552,8 +565,8 @@ local function morphShift(ctx: Ctx, template: Model): number?
 	end
 	local root = wolf:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then
-		Effects.flash(root, BEAST, 4, 18, 0.8)
-		Effects.burst(root.Position, BEAST, 6, 0.4)
+		Effects.flash(root, C(ctx, "BEAST"), 4, 18, 0.8)
+		Effects.burst(root.Position, C(ctx, "BEAST"), 6, 0.4)
 	end
 	return 1
 end
@@ -711,8 +724,8 @@ AbilityEffects.TheTurning = function(ctx)
 		st.weaknesses.Fire = w
 		st.weaknesses.Electric = w
 	end
-	Effects.flash(ctx.root, BEAST, 4, 18, 0.8)
-	Effects.burst(ctx.root.Position, BEAST, 6, 0.4)
+	Effects.flash(ctx.root, C(ctx, "BEAST"), 4, 18, 0.8)
+	Effects.burst(ctx.root.Position, C(ctx, "BEAST"), 6, 0.4)
 
 	-- The form holds until toggled off; the lock is the ongoing cost.
 	setTimed(ctx, "shift", math.huge, function()
@@ -754,17 +767,17 @@ AbilityEffects.RedRend = function(ctx)
 	local shifted = isTimed(ctx.character, "shift") or morphs[ctx.player] ~= nil
 	local dmg = (14 + 4 * ctx.rank) * (if shifted then 1 else 0.5)
 	local hits = if shifted then 2 else 1 -- two simultaneous claws while shifted
-	Effects.flash(ctx.root, BEAST, 1.5, 10, 0.2)
+	Effects.flash(ctx.root, C(ctx, "BEAST"), 1.5, 10, 0.2)
 	for _, m in targetsInCone(ctx, 8, 0.4) do
 		for _ = 1, hits do
-			hit(m, dmg, "Physical", ctx.character, BEAST)
+			hit(m, dmg, "Physical", ctx.character, C(ctx, "BEAST"))
 		end
 		if ctx.rank >= 3 then
 			task.spawn(function() -- Rend: short bleed
 				for _ = 1, 3 do
 					task.wait(0.7)
 					if m.Parent then
-						hit(m, 5, "Physical", ctx.character, BLOOD)
+						hit(m, 5, "Physical", ctx.character, C(ctx, "BLOOD"))
 					end
 				end
 			end)
@@ -776,8 +789,8 @@ end
 AbilityEffects.HuntersHowl = function(ctx)
 	Effects.animate(ctx.character, "roar", 1.2)
 	local radius = 20 + 3 * ctx.rank
-	Effects.burst(ctx.root.Position, BEAST, radius, 0.6)
-	Effects.flash(ctx.root, BEAST, 3, radius, 0.6)
+	Effects.burst(ctx.root.Position, C(ctx, "BEAST"), radius, 0.6)
+	Effects.flash(ctx.root, C(ctx, "BEAST"), 3, radius, 0.6)
 	for _, m in targetsInRadius(ctx.root.Position, radius, ctx.character) do
 		local h = m:FindFirstChildOfClass("Humanoid")
 		if h and ctx.rank >= 3 then
@@ -794,7 +807,7 @@ AbilityEffects.HuntersHowl = function(ctx)
 end
 
 AbilityEffects.CragClimb = function(ctx)
-	Effects.flash(ctx.root, BEAST, 1.5, 10, 0.3)
+	Effects.flash(ctx.root, C(ctx, "BEAST"), 1.5, 10, 0.3)
 	if ctx.rank >= 3 then -- Pounce
 		ctx.root.AssemblyLinearVelocity = flatForward(ctx) * (70 + 10 * ctx.rank) + Vector3.new(0, 40, 0)
 	else
@@ -808,10 +821,10 @@ AbilityEffects.RedThirst = function(ctx)
 	Effects.animate(ctx.character, "melee", 1.5)
 	local dmg = 16 + 5 * ctx.rank
 	local leech = if ctx.rank >= 2 then 0.6 else 0.4
-	Effects.flash(ctx.root, BLOOD, 2, 10, 0.25)
+	Effects.flash(ctx.root, C(ctx, "BLOOD"), 2, 10, 0.25)
 	local any = false
 	for _, m in targetsInCone(ctx, 9, 0.5) do
-		local applied = hit(m, dmg, "Physical", ctx.character, BLOOD)
+		local applied = hit(m, dmg, "Physical", ctx.character, C(ctx, "BLOOD"))
 		if applied > 0 then
 			any = true
 			heal(ctx, applied * leech)
@@ -821,7 +834,7 @@ AbilityEffects.RedThirst = function(ctx)
 end
 
 AbilityEffects.Nightspeed = function(ctx)
-	Effects.flash(ctx.root, BLOOD, 2, 12, 0.3)
+	Effects.flash(ctx.root, C(ctx, "BLOOD"), 2, 12, 0.3)
 	ctx.root.AssemblyLinearVelocity = flatForward(ctx) * (100 + 10 * ctx.rank) + Vector3.new(0, 8, 0)
 	return 5 - 0.5 * ctx.rank
 end
@@ -848,11 +861,11 @@ end
 AbilityEffects.TheSpark = function(ctx)
 	Effects.animate(ctx.character, "cast", 1.6)
 	local dmg = 18 + 5 * ctx.rank
-	bolt(ctx, ELECTRIC, 120, 130, dmg, "Electric", 0.9, function(pos, model)
+	bolt(ctx, C(ctx, "ELECTRIC"), 120, 130, dmg, "Electric", 0.9, function(pos, model)
 		if ctx.rank >= 3 then -- Arc: chain to one nearby
 			for _, m in targetsInRadius(pos, 15, ctx.character) do
 				if m ~= model then
-					hit(m, dmg * 0.5, "Electric", ctx.character, ELECTRIC)
+					hit(m, dmg * 0.5, "Electric", ctx.character, C(ctx, "ELECTRIC"))
 					break
 				end
 			end
@@ -865,10 +878,10 @@ AbilityEffects.Overload = function(ctx)
 	Effects.animate(ctx.character, "roar", 1.4)
 	local radius = 12 + 2 * ctx.rank
 	local dmg = 30 + 8 * ctx.rank
-	Effects.burst(ctx.root.Position, ELECTRIC, radius, 0.45)
-	Effects.flash(ctx.root, ELECTRIC, 4, radius, 0.45)
+	Effects.burst(ctx.root.Position, C(ctx, "ELECTRIC"), radius, 0.45)
+	Effects.flash(ctx.root, C(ctx, "ELECTRIC"), 4, radius, 0.45)
 	for _, m in targetsInRadius(ctx.root.Position, radius, ctx.character) do
-		hit(m, dmg, "Electric", ctx.character, ELECTRIC)
+		hit(m, dmg, "Electric", ctx.character, C(ctx, "ELECTRIC"))
 	end
 	return 8
 end
@@ -890,9 +903,9 @@ AbilityEffects.Swordwork = function(ctx)
 	local chainLen = if ctx.rank >= 4 then 4 else 3
 	local finisher = c.count >= chainLen
 	local dmg = (18 + 4 * ctx.rank) * (if finisher then 1.6 else 1)
-	Effects.flash(ctx.root, STEEL, 1.5, 9, 0.2)
+	Effects.flash(ctx.root, C(ctx, "STEEL"), 1.5, 9, 0.2)
 	for _, m in targetsInCone(ctx, 10, 0.4) do
-		hit(m, dmg, "Physical", ctx.character, STEEL)
+		hit(m, dmg, "Physical", ctx.character, C(ctx, "STEEL"))
 		if finisher and ctx.rank >= 3 then -- stagger
 			local p = m.PrimaryPart or m:FindFirstChild("HumanoidRootPart")
 			if p and p:IsA("BasePart") and not p.Anchored then
@@ -910,7 +923,7 @@ AbilityEffects.Riposte = function(ctx)
 	local ms = GameConfig.Combat.ParryWindowMs + 60 * math.max(ctx.rank - 1, 0)
 	parryUntil[ctx.character] = os.clock() + ms / 1000
 	parryRank[ctx.character] = ctx.rank
-	Effects.flash(ctx.root, STEEL, 2.5, 8, ms / 1000)
+	Effects.flash(ctx.root, C(ctx, "STEEL"), 2.5, 8, ms / 1000)
 	return 1.2
 end
 
@@ -944,9 +957,9 @@ AbilityEffects.FirstCut = function(ctx)
 	local fromStealth = isTimed(ctx.character, "vanish")
 	clearTimed(ctx.character, "vanish")
 	local dmg = (18 + 4 * ctx.rank) * (if fromStealth then 2.5 + 0.3 * ctx.rank else 0.8)
-	Effects.flash(ctx.root, STEEL, 2, 9, 0.25)
+	Effects.flash(ctx.root, C(ctx, "STEEL"), 2, 9, 0.25)
 	for _, m in targetsInCone(ctx, 10, 0.4) do
-		hit(m, dmg, "Physical", ctx.character, STEEL)
+		hit(m, dmg, "Physical", ctx.character, C(ctx, "STEEL"))
 	end
 	return if fromStealth then 0.5 else 1.5
 end
