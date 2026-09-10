@@ -64,15 +64,18 @@ Net.get("ChooseClass").OnServerInvoke = function(player, classId)
 	if not profile then
 		return { ok = false, err = "profile not loaded" }
 	end
-	-- Choosing a class is one-time for now; grant rank 1 of the basic-attack tree
-	-- so the player has a usable button immediately.
+	-- Choosing a class is one-time for now. Every class starts with its first
+	-- TWO trees at rank 1 (plus the basic attack, wherever it lives), so each
+	-- class opens with an attack and a signature ability, not a single button.
 	if profile.class == nil then
 		profile.class = classId
 		local class = Classes.get(classId)
 		if class then
-			profile.perks[class.trees[1]] = math.max(profile.perks[class.trees[1]] or 0, 1)
-			-- ...and the basic attack, when it lives on another slot (Werewolf claws).
-			profile.perks[class.attackTree] = math.max(profile.perks[class.attackTree] or 0, 1)
+			for _, treeId in { class.trees[1], class.trees[2], class.attackTree } do
+				if treeId then
+					profile.perks[treeId] = math.max(profile.perks[treeId] or 0, 1)
+				end
+			end
 		end
 		-- Playtest: seed shards so progression can be exercised immediately.
 		profile.soulShards += GameConfig.Playtest.StartingShards
