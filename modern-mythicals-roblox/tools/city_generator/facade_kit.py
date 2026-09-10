@@ -12,7 +12,7 @@ from __future__ import annotations
 import random
 
 from plots import Plot
-from rbxlx import Part
+from rbxlx import Part, PointLight
 
 FLOOR_HEIGHT = 14.0  # studs per floor
 
@@ -64,6 +64,20 @@ def build_plot(plot: Plot, neon_palette: dict[str, list[int]]) -> list[Part]:
                 transparency=0.35,
             )
         )
+        if plot.landmark == "HouseOfSol":
+            # "Warm interior light spilling onto a dark street is the whole
+            # exterior read, and it is the only warm light on Abbott Avenue."
+            door_z = plot.z - 26 if plot.side == "INLAND" else plot.z + 26
+            parts.append(
+                Part(
+                    name="HouseOfSol_DoorLight",
+                    position=(plot.x + plot.width / 2, 9, door_z),
+                    size=(3, 3, 1),
+                    color=(255, 200, 120),
+                    material="Neon",
+                    lights=[PointLight(color=(255, 190, 110), brightness=3.0, range=60)],
+                )
+            )
         return parts
 
     # Procedural building shell.
@@ -91,9 +105,52 @@ def build_plot(plot: Plot, neon_palette: dict[str, list[int]]) -> list[Part]:
                 size=(plot.width - 4, 1.5, 0.5),
                 color=(rgb[0], rgb[1], rgb[2]),
                 material="Neon",
+                lights=[PointLight(color=(rgb[0], rgb[1], rgb[2]), brightness=1.6, range=45)],
             )
         )
 
+    return parts
+
+
+def build_streetlights(
+    name: str,
+    z: float,
+    length: float,
+    road_width: float,
+    spacing: float,
+    color: tuple[int, int, int],
+    brightness: float,
+) -> list[Part]:
+    """Lamp posts down both sides of a road. Collins gets dense cool-white;
+    Abbott gets sparse sodium orange (the tone break the spec calls for).
+    Each post is a Frankenstein 'live source' candidate."""
+    parts: list[Part] = []
+    offset = road_width / 2 + 4
+    x = spacing / 2
+    i = 0
+    while x < length:
+        for side, sz in (("L", z - offset), ("R", z + offset)):
+            parts.append(
+                Part(
+                    name=f"lamp_{name}_{i}{side}_post",
+                    position=(x, 9, sz),
+                    size=(1, 18, 1),
+                    color=(60, 60, 64),
+                    material="Metal",
+                )
+            )
+            parts.append(
+                Part(
+                    name=f"lamp_{name}_{i}{side}_head",
+                    position=(x, 18.5, sz),
+                    size=(2.5, 1, 2.5),
+                    color=color,
+                    material="Neon",
+                    lights=[PointLight(color=color, brightness=brightness, range=55)],
+                )
+            )
+        x += spacing
+        i += 1
     return parts
 
 

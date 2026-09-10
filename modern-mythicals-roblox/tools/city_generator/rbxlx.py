@@ -22,6 +22,31 @@ def _ref() -> str:
 
 
 @dataclass
+class PointLight:
+    """A light parented to a Part. Night cities are lit BY the city — this is
+    how streetlights, neon glow, and the House of Sol's warm door read."""
+
+    color: tuple[int, int, int] = (255, 235, 200)
+    brightness: float = 2.0
+    range: float = 40.0
+
+    def to_xml(self) -> str:
+        r, g, b = self.color
+        return f"""   <Item class="PointLight" referent="{_ref()}">
+    <Properties>
+     <string name="Name">PointLight</string>
+     <bool name="Enabled">true</bool>
+     <bool name="Shadows">false</bool>
+     <float name="Brightness">{self.brightness}</float>
+     <float name="Range">{self.range}</float>
+     <Color3 name="Color">
+      <R>{r / 255:.4f}</R><G>{g / 255:.4f}</G><B>{b / 255:.4f}</B>
+     </Color3>
+    </Properties>
+   </Item>"""
+
+
+@dataclass
 class Part:
     name: str
     position: tuple[float, float, float]
@@ -30,6 +55,7 @@ class Part:
     material: str = "Concrete"
     transparency: float = 0.0
     anchored: bool = True
+    lights: list[PointLight] = field(default_factory=list)
 
     def to_xml(self) -> str:
         px, py, pz = self.position
@@ -55,6 +81,7 @@ class Part:
      <R20>0</R20><R21>0</R21><R22>1</R22>
     </CoordinateFrame>
    </Properties>
+{chr(10).join(l.to_xml() for l in self.lights)}
   </Item>"""
 
 
