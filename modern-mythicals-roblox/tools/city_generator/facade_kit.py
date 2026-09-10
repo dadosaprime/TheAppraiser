@@ -75,7 +75,7 @@ def build_plot(plot: Plot, neon_palette: dict[str, list[int]]) -> list[Part]:
                     size=(3, 3, 1),
                     color=(255, 200, 120),
                     material="Neon",
-                    lights=[PointLight(color=(255, 190, 110), brightness=3.0, range=60)],
+                    lights=[PointLight(color=(255, 190, 110), brightness=4.0, range=70)],
                 )
             )
         return parts
@@ -105,7 +105,7 @@ def build_plot(plot: Plot, neon_palette: dict[str, list[int]]) -> list[Part]:
                 size=(plot.width - 4, 1.5, 0.5),
                 color=(rgb[0], rgb[1], rgb[2]),
                 material="Neon",
-                lights=[PointLight(color=(rgb[0], rgb[1], rgb[2]), brightness=1.6, range=45)],
+                lights=[PointLight(color=(rgb[0], rgb[1], rgb[2]), brightness=2.6, range=60)],
             )
         )
 
@@ -146,7 +146,7 @@ def build_streetlights(
                     size=(2.5, 1, 2.5),
                     color=color,
                     material="Neon",
-                    lights=[PointLight(color=color, brightness=brightness, range=55)],
+                    lights=[PointLight(color=color, brightness=brightness, range=80)],
                 )
             )
         x += spacing

@@ -25,7 +25,21 @@ local DataService = {}
 
 local STORE_NAME = "PlayerProfiles_v1"
 local AUTOSAVE_INTERVAL = 60 -- seconds
-local profileStore = DataStoreService:GetDataStore(STORE_NAME)
+
+-- GetDataStore THROWS in an unpublished local place (and in Studio unless
+-- "Enable Studio Access to API Services" is on). That must never take the
+-- server down — fall back to in-memory profiles and say so once.
+local profileStore: DataStore? = nil
+do
+	local ok, store = pcall(function()
+		return DataStoreService:GetDataStore(STORE_NAME)
+	end)
+	if ok then
+		profileStore = store
+	else
+		warn("[DataService] DataStore unavailable (unpublished place?) — progress will not persist this session.")
+	end
+end
 
 type Profile = {
 	class: string?,
@@ -80,9 +94,12 @@ local function key(player: Player): string
 end
 
 local function load(player: Player)
-	local ok, result = pcall(function()
-		return profileStore:GetAsync(key(player))
-	end)
+	local ok, result = true, nil
+	if profileStore then
+		ok, result = pcall(function()
+			return (profileStore :: DataStore):GetAsync(key(player))
+		end)
+	end
 	if not player.Parent then
 		return -- left during load
 	end
@@ -99,11 +116,11 @@ end
 
 local function save(player: Player)
 	local profile = profiles[player]
-	if not profile then
+	if not profile or not profileStore then
 		return
 	end
 	local ok, err = pcall(function()
-		profileStore:SetAsync(key(player), profile)
+		(profileStore :: DataStore):SetAsync(key(player), profile)
 	end)
 	if ok then
 		dirty[player] = nil

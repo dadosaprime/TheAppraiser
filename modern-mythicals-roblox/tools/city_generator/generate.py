@@ -36,12 +36,12 @@ def generate(config_path: str, out_path: str, use_osm: bool = False) -> int:
     # Streetlights — the city lights itself. Collins: dense, cool white.
     # Abbott: sparse sodium orange, no neon (the tone break). Service road: none.
     for part in facade_kit.build_streetlights(
-        "COLLINS", config.roads["COLLINS"].z, config.strip_length, 50, 110, (235, 240, 255), 2.2
+        "COLLINS", config.roads["COLLINS"].z, config.strip_length, 50, 110, (235, 240, 255), 3.5
     ):
         place.add(part)
     if "ABBOTT" in config.roads:
         for part in facade_kit.build_streetlights(
-            "ABBOTT", config.roads["ABBOTT"].z, config.strip_length, 50, 260, (255, 170, 80), 1.4
+            "ABBOTT", config.roads["ABBOTT"].z, config.strip_length, 50, 260, (255, 170, 80), 2.2
         ):
             place.add(part)
 

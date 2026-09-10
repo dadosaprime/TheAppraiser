@@ -11,15 +11,16 @@ local Net = require(Shared.Net)
 local Classes = require(Shared.Classes)
 local GameConfig = require(Shared.GameConfig)
 
+-- Build the network layer FIRST, before any service loads, so a failing
+-- service surfaces as an error in Output instead of a client that waits forever.
+Net.build()
+
 local DataService = require(script.DataService)
 local ProgressionService = require(script.ProgressionService)
 local AbilityService = require(script.AbilityService)
 local CombatService = require(script.CombatService)
 local SpawnService = require(script.SpawnService)
 local TerrainGenerator = require(script.TerrainGenerator)
-
--- ── Build the network layer ─────────────────────────────────────────────────
-Net.build()
 
 -- ── Start services ──────────────────────────────────────────────────────────
 DataService.init()
