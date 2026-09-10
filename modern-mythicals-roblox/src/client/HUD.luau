@@ -5,6 +5,7 @@
 -- Intentionally plain — this is a functional scaffold, not the final art pass.
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local Classes = require(Shared.Classes)
@@ -22,6 +23,13 @@ local classLabel: TextLabel
 local toastLabel: TextLabel
 local slotButtons: { TextButton } = {}
 local toastSerial = 0
+local healthFill: Frame
+local healthText: TextLabel
+local furyRow: Frame
+local furyFill: Frame
+local furyText: TextLabel
+local formBadge: TextLabel
+local currentClass: string? = nil
 
 local function makeLabel(parent: Instance, text: string, pos: UDim2, size: UDim2): TextLabel
 	local label = Instance.new("TextLabel")
@@ -37,6 +45,31 @@ local function makeLabel(parent: Instance, text: string, pos: UDim2, size: UDim2
 	return label
 end
 
+local function makeBar(parent: Instance, pos: UDim2, size: UDim2, color: Color3): (Frame, Frame, TextLabel)
+	local row = Instance.new("Frame")
+	row.Position = pos
+	row.Size = size
+	row.BackgroundColor3 = Color3.fromRGB(15, 12, 24)
+	row.BackgroundTransparency = 0.35
+	row.BorderSizePixel = 0
+	row.Parent = parent
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = color
+	fill.BorderSizePixel = 0
+	fill.Parent = row
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundTransparency = 1
+	text.TextColor3 = Color3.fromRGB(240, 236, 250)
+	text.TextStrokeTransparency = 0.4
+	text.Font = Enum.Font.GothamBold
+	text.TextScaled = true
+	text.Text = ""
+	text.Parent = row
+	return row, fill, text
+end
+
 function HUD.build()
 	gui = Instance.new("ScreenGui")
 	gui.Name = "ModernMythicalsHUD"
@@ -47,6 +80,29 @@ function HUD.build()
 	classLabel = makeLabel(gui, "—", UDim2.fromScale(0.01, 0.02), UDim2.fromScale(0.18, 0.05))
 	rankLabel = makeLabel(gui, "Soul Rank —", UDim2.fromScale(0.01, 0.08), UDim2.fromScale(0.18, 0.05))
 	shardLabel = makeLabel(gui, "Shards: —", UDim2.fromScale(0.01, 0.14), UDim2.fromScale(0.18, 0.05))
+
+	-- Health (all classes) and Fury (Werewolf only).
+	local _, hf, ht = makeBar(gui, UDim2.fromScale(0.01, 0.20), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(70, 200, 110))
+	healthFill, healthText = hf, ht
+	local fr, ff, ft = makeBar(gui, UDim2.fromScale(0.01, 0.245), UDim2.fromScale(0.18, 0.035), Color3.fromRGB(230, 90, 40))
+	furyRow, furyFill, furyText = fr, ff, ft
+	furyRow.Visible = false
+
+	formBadge = makeLabel(gui, "WOLF FORM", UDim2.fromScale(0.01, 0.29), UDim2.fromScale(0.18, 0.04))
+	formBadge.BackgroundColor3 = Color3.fromRGB(120, 20, 30)
+	formBadge.BackgroundTransparency = 0.15
+	formBadge.Visible = false
+
+	-- Live health from the local character (replicates from the server).
+	RunService.RenderStepped:Connect(function()
+		local c = player.Character
+		local h = c and c:FindFirstChildOfClass("Humanoid")
+		if h and h.MaxHealth > 0 then
+			local frac = math.clamp(h.Health / h.MaxHealth, 0, 1)
+			healthFill.Size = UDim2.fromScale(frac, 1)
+			healthText.Text = ("HP %d / %d"):format(math.floor(h.Health + 0.5), math.floor(h.MaxHealth + 0.5))
+		end
+	end)
 
 	toastLabel = makeLabel(gui, "", UDim2.fromScale(0.3, 0.02), UDim2.fromScale(0.4, 0.05))
 	toastLabel.BackgroundTransparency = 1
@@ -101,7 +157,9 @@ function HUD.update(profile: any)
 	shardLabel.Text = ("Shards: %d"):format(profile.soulShards)
 
 	local class = profile.class and Classes.get(profile.class)
+	currentClass = profile.class
 	classLabel.Text = class and class.displayName or "No class"
+	furyRow.Visible = profile.class == "Werewolf"
 	for slot = 1, 5 do
 		local treeId = class and class.trees[slot]
 		local tree = treeId and PerkTrees.get(treeId)
@@ -114,6 +172,23 @@ function HUD.update(profile: any)
 			slotButtons[slot].Text = tostring(slot)
 		end
 	end
+end
+
+-- Transient combat status from the server (Fury, shifted).
+function HUD.setStatus(status: any)
+	if type(status) ~= "table" then
+		return
+	end
+	if currentClass == "Werewolf" and type(status.fury) == "number" and type(status.furyMax) == "number" then
+		local frac = math.clamp(status.fury / status.furyMax, 0, 1)
+		furyFill.Size = UDim2.fromScale(frac, 1)
+		local cost = status.shiftCost or 0
+		furyText.Text = if status.shifted
+			then ("FURY %d — draining"):format(status.fury)
+			else ("FURY %d / %d  (shift at %d)"):format(status.fury, status.furyMax, cost)
+		furyFill.BackgroundColor3 = if status.fury >= cost then Color3.fromRGB(255, 110, 40) else Color3.fromRGB(150, 60, 30)
+	end
+	formBadge.Visible = status.shifted == true
 end
 
 -- Short message at the top; fades after a moment.

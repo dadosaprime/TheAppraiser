@@ -24,6 +24,7 @@ Net.Definitions = {
 	AbilityFeedback = "RemoteEvent", -- cooldowns, cast confirmations, errors
 	CombatEvent = "RemoteEvent", -- damage numbers, downs, revives (for HUD/VFX)
 	Toast = "RemoteEvent", -- short player-facing messages (rank-up, etc.)
+	StatusUpdated = "RemoteEvent", -- transient combat status: fury, shifted, etc.
 }
 
 -- Resolve the remotes folder (waits on the client, must exist on the server).

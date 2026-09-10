@@ -20,6 +20,7 @@ local Effects = require(script.Parent.Effects)
 local CombatService = require(script.Parent.CombatService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local SpawnService = require(script.Parent.SpawnService)
+local Fury = require(script.Parent.Fury)
 
 export type Ctx = {
 	player: Player,
@@ -29,7 +30,7 @@ export type Ctx = {
 	rank: number,
 	aim: Vector3, -- unit vector, usually the camera's look direction
 }
-type Effect = (ctx: Ctx) -> number?
+type Effect = (ctx: Ctx) -> (number?, string?)
 
 local AbilityEffects: { [string]: Effect } = {}
 
@@ -150,6 +151,15 @@ local function hit(target: Model, amount: number, dmgType: string, attacker: Mod
 	if p then
 		Effects.damageNumber(p, applied, color)
 	end
+	-- Fury builds on both ends of a hit (only matters for Werewolves).
+	local attackerPlayer = Players:GetPlayerFromCharacter(attacker)
+	if attackerPlayer then
+		Fury.add(attackerPlayer, applied * Fury.GAIN_DEALT)
+	end
+	local victimPlayer = Players:GetPlayerFromCharacter(target)
+	if victimPlayer then
+		Fury.add(victimPlayer, applied * Fury.GAIN_TAKEN)
+	end
 	-- A kill pays Soul Shards to the player who landed it (once).
 	if hum.Health <= 0 then
 		local reward = target:GetAttribute("ShardReward")
@@ -253,6 +263,7 @@ end
 
 -- ═══════════════════════════ WITCH ═══════════════════════════
 AbilityEffects.Emberhand = function(ctx)
+	Effects.animate(ctx.character, "cast", 1.6)
 	local dmg = 22 + 6 * ctx.rank
 	bolt(ctx, FIRE, 80, 140, dmg, "Fire", 1.0)
 	if ctx.rank >= 4 then
@@ -266,6 +277,7 @@ AbilityEffects.Emberhand = function(ctx)
 end
 
 AbilityEffects.Conflagration = function(ctx)
+	Effects.animate(ctx.character, "cast", 1.1)
 	local dmg = 60 + 10 * ctx.rank
 	bolt(ctx, FIRE, 55, 110, dmg, "Fire", 1.6, function(pos, model)
 		if ctx.rank >= 2 then
@@ -451,12 +463,8 @@ local function morphShift(ctx: Ctx, assetId: number): number?
 		Effects.flash(root, BEAST, 4, 18, 0.8)
 		Effects.burst(root.Position, BEAST, 6, 0.4)
 	end
-	local duration = if GameConfig.Playtest.WerewolfStartsShifted then math.huge else 12 + 4 * ctx.rank
-	task.delay(duration, function()
-		if morphs[ctx.player] and morphs[ctx.player].wolf == wolf then
-			revertMorph(ctx.player)
-		end
-	end)
+	-- The form lasts as long as Fury does (see Fury.luau).
+	Fury.setShiftRank(ctx.player, ctx.rank)
 	return 1
 end
 
@@ -473,6 +481,14 @@ AbilityEffects.TheTurning = function(ctx)
 		clearTimed(ctx.character, "shift") -- toggle back to human
 		return 1
 	end
+	if morphs[ctx.player] then
+		revertMorph(ctx.player)
+		return 1
+	end
+	if not Fury.canShift(ctx.player) then
+		return nil, ("Need %d Fury — fight in human form to build it"):format(Fury.SHIFT_COST)
+	end
+	Effects.animate(ctx.character, "roar", 1.0)
 	local hum = ctx.humanoid
 	local rank = ctx.rank
 
@@ -584,8 +600,9 @@ AbilityEffects.TheTurning = function(ctx)
 	Effects.flash(ctx.root, BEAST, 4, 18, 0.8)
 	Effects.burst(ctx.root.Position, BEAST, 6, 0.4)
 
-	local duration = if GameConfig.Playtest.WerewolfStartsShifted then math.huge else 12 + 4 * rank
-	setTimed(ctx, "shift", duration, function()
+	-- The form lasts as long as Fury does (see Fury.luau); no fixed timer.
+	Fury.setShiftRank(ctx.player, rank)
+	setTimed(ctx, "shift", math.huge, function()
 		for _, e in extras do
 			e:Destroy()
 		end
@@ -619,7 +636,8 @@ AbilityEffects.TheTurning = function(ctx)
 end
 
 AbilityEffects.RedRend = function(ctx)
-	local shifted = isTimed(ctx.character, "shift")
+	Effects.animate(ctx.character, "melee", 1.6)
+	local shifted = isTimed(ctx.character, "shift") or morphs[ctx.player] ~= nil
 	local dmg = (14 + 4 * ctx.rank) * (if shifted then 1 else 0.5)
 	local hits = if shifted then 2 else 1 -- two simultaneous claws while shifted
 	Effects.flash(ctx.root, BEAST, 1.5, 10, 0.2)
@@ -642,6 +660,7 @@ AbilityEffects.RedRend = function(ctx)
 end
 
 AbilityEffects.HuntersHowl = function(ctx)
+	Effects.animate(ctx.character, "roar", 1.2)
 	local radius = 20 + 3 * ctx.rank
 	Effects.burst(ctx.root.Position, BEAST, radius, 0.6)
 	Effects.flash(ctx.root, BEAST, 3, radius, 0.6)
@@ -672,6 +691,7 @@ end
 
 -- ═══════════════════════════ VAMPIRE ═══════════════════════════
 AbilityEffects.RedThirst = function(ctx)
+	Effects.animate(ctx.character, "melee", 1.5)
 	local dmg = 16 + 5 * ctx.rank
 	local leech = if ctx.rank >= 2 then 0.6 else 0.4
 	Effects.flash(ctx.root, BLOOD, 2, 10, 0.25)
@@ -712,6 +732,7 @@ end
 
 -- ═══════════════════════════ FRANKENSTEIN ═══════════════════════════
 AbilityEffects.TheSpark = function(ctx)
+	Effects.animate(ctx.character, "cast", 1.6)
 	local dmg = 18 + 5 * ctx.rank
 	bolt(ctx, ELECTRIC, 120, 130, dmg, "Electric", 0.9, function(pos, model)
 		if ctx.rank >= 3 then -- Arc: chain to one nearby
@@ -727,6 +748,7 @@ AbilityEffects.TheSpark = function(ctx)
 end
 
 AbilityEffects.Overload = function(ctx)
+	Effects.animate(ctx.character, "roar", 1.4)
 	local radius = 12 + 2 * ctx.rank
 	local dmg = 30 + 8 * ctx.rank
 	Effects.burst(ctx.root.Position, ELECTRIC, radius, 0.45)
@@ -741,6 +763,7 @@ end
 local combo: { [Player]: { count: number, at: number } } = {}
 
 AbilityEffects.Swordwork = function(ctx)
+	Effects.animate(ctx.character, "melee", 1.5)
 	clearTimed(ctx.character, "vanish") -- attacking breaks stealth
 	local c = combo[ctx.player]
 	local now = os.clock()
@@ -796,6 +819,7 @@ AbilityEffects.Stillness = function(ctx)
 end
 
 AbilityEffects.FirstCut = function(ctx)
+	Effects.animate(ctx.character, "lunge", 1.4)
 	local fromStealth = isTimed(ctx.character, "vanish")
 	clearTimed(ctx.character, "vanish")
 	local dmg = (18 + 4 * ctx.rank) * (if fromStealth then 2.5 + 0.3 * ctx.rank else 0.8)
@@ -815,5 +839,18 @@ Players.PlayerRemoving:Connect(function(player)
 		parryRank[player.Character] = nil
 	end
 end)
+
+-- Fury owns the drain; it asks us whether a player is shifted and tells us to end it.
+Fury.isShifted = function(player: Player): boolean
+	local c = player.Character
+	return (c ~= nil and isTimed(c, "shift")) or morphs[player] ~= nil
+end
+Fury.endShift = function(player: Player)
+	local c = player.Character
+	if c then
+		clearTimed(c, "shift")
+	end
+	revertMorph(player)
+end
 
 return AbilityEffects

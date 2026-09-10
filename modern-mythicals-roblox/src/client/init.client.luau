@@ -37,6 +37,7 @@ local function applyProfile(profile: any)
 end
 
 Net.get("ProfileUpdated").OnClientEvent:Connect(applyProfile)
+Net.get("StatusUpdated").OnClientEvent:Connect(HUD.setStatus)
 Net.get("Toast").OnClientEvent:Connect(function(msg)
 	if type(msg) == "string" then
 		HUD.toast(msg)

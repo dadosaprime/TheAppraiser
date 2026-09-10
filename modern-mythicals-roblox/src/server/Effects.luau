@@ -85,6 +85,53 @@ function Effects.burst(position: Vector3, color: Color3, radius: number, duratio
 	Debris:AddItem(p, duration)
 end
 
+-- Roblox's public default animations (R15). Playable in any experience.
+local ANIMS: { [string]: string } = {
+	melee = "rbxassetid://522635514", -- tool slash
+	lunge = "rbxassetid://522638767", -- tool lunge
+	cast = "rbxassetid://507770453", -- point
+	roar = "rbxassetid://507770677", -- cheer (arms up)
+}
+local animObjects: { [string]: Animation } = {}
+local trackCache: { [Humanoid]: { [string]: AnimationTrack } } = {}
+
+-- Play a short action animation on any Humanoid rig (players and NPCs).
+function Effects.animate(character: Model, key: string, speed: number?)
+	local id = ANIMS[key]
+	local hum = character:FindFirstChildOfClass("Humanoid")
+	if not id or not hum then
+		return
+	end
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+	local tracks = trackCache[hum]
+	if not tracks then
+		tracks = {}
+		trackCache[hum] = tracks
+		hum.Destroying:Connect(function()
+			trackCache[hum] = nil
+		end)
+	end
+	local track = tracks[key]
+	if not track then
+		local anim = animObjects[key]
+		if not anim then
+			anim = Instance.new("Animation")
+			anim.AnimationId = id
+			animObjects[key] = anim
+		end
+		local ok, t = pcall(function()
+			return animator:LoadAnimation(anim)
+		end)
+		if not ok or not t then
+			return
+		end
+		t.Priority = Enum.AnimationPriority.Action
+		tracks[key] = t
+		track = t
+	end
+	track:Play(0.08, 1, speed or 1.3)
+end
+
 export type ProjectileOpts = {
 	color: Color3,
 	speed: number,

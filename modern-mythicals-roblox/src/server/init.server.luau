@@ -23,9 +23,11 @@ local SpawnService = require(script.SpawnService)
 local TerrainGenerator = require(script.TerrainGenerator)
 local TrainingDummies = require(script.TrainingDummies)
 local StreetGang = require(script.StreetGang)
+local Fury = require(script.Fury)
 
 -- ── Start services ──────────────────────────────────────────────────────────
 DataService.init()
+Fury.init()
 SpawnService.init()
 TerrainGenerator.init()
 TrainingDummies.init()

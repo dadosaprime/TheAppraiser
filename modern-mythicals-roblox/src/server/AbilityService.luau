@@ -99,8 +99,12 @@ function AbilityService.activate(player: Player, slot: number, target: any?): Ac
 	local tree = PerkTrees.get(treeId)
 	assert(tree, "tree missing")
 
-	-- Run the effect (thin hook). Effects may adjust the cooldown they return.
-	local cd = AbilityService.runEffect(player, treeId, rank, target) or BASE_COOLDOWN[tree.role] or 1
+	-- Run the effect. Effects may return a cooldown override and/or a refusal.
+	local cdOverride, err = AbilityService.runEffect(player, treeId, rank, target)
+	if err then
+		return { ok = false, err = err }
+	end
+	local cd = cdOverride or BASE_COOLDOWN[tree.role] or 1
 	setCooldown(player, treeId, cd)
 
 	return { ok = true, cooldown = cd }
@@ -109,7 +113,7 @@ end
 -- Effect dispatcher. Returns an optional cooldown override.
 -- Real effects live in AbilityEffects.luau keyed by tree id; trees without an
 -- entry yet fall through to a log line so the button still "works".
-function AbilityService.runEffect(player: Player, treeId: string, rank: number, target: any?): number?
+function AbilityService.runEffect(player: Player, treeId: string, rank: number, target: any?): (number?, string?)
 	local tree = PerkTrees.get(treeId)
 	if not tree then
 		return nil
