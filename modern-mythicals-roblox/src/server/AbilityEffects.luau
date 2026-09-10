@@ -9,9 +9,12 @@
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local AssetService = game:GetService("AssetService")
+local InsertService = game:GetService("InsertService")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local GameConfig = require(Shared.GameConfig)
+local AssetIds = require(Shared.AssetIds)
 
 local Effects = require(script.Parent.Effects)
 local CombatService = require(script.Parent.CombatService)
@@ -287,6 +290,161 @@ local function attachToHead(character: Model, head: BasePart, name: string, size
 	return p
 end
 
+-- ── Werewolf avatar swap ────────────────────────────────────────────────────
+-- AssetIds.ClassModels.WerewolfShifted decides how the shift looks:
+--   ""                 → procedural beast (fur recolor + scale + ears/eyes)
+--   "bundle:<id>"      → apply an Avatar Shop bundle to the player's description
+--   "rbxassetid://<id>" or "<id>" → morph into a Creator Store rig model
+local function shiftAsset(): (string?, number?)
+	local raw = AssetIds.ClassModels.WerewolfShifted
+	if raw == "" then
+		return nil, nil
+	end
+	local b = raw:match("^bundle:(%d+)$")
+	if b then
+		return "bundle", tonumber(b)
+	end
+	local m = raw:match("(%d+)$")
+	if m then
+		return "model", tonumber(m)
+	end
+	return nil, nil
+end
+
+-- Bundle → HumanoidDescription (fetched once per server, cloned per use).
+local bundleDescCache: { [number]: HumanoidDescription } = {}
+local function bundleDescription(bundleId: number): HumanoidDescription?
+	local cached = bundleDescCache[bundleId]
+	if cached then
+		return cached:Clone()
+	end
+	local ok, desc = pcall(function()
+		local details = AssetService:GetBundleDetailsAsync(bundleId)
+		for _, item in details.Items do
+			if item.Type == "UserOutfit" then
+				return Players:GetHumanoidDescriptionFromOutfitId(item.Id)
+			end
+		end
+		return nil
+	end)
+	if ok and desc then
+		bundleDescCache[bundleId] = desc
+		return desc:Clone()
+	end
+	warn("[Shift] bundle lookup failed for", bundleId, desc)
+	return nil
+end
+
+-- Model morph: the player's character is REPLACED by a clone of a rigged model
+-- for the duration, then the original character is restored in place.
+local wolfTemplate: Model? = nil
+local function loadWolfTemplate(assetId: number): Model?
+	if wolfTemplate then
+		return wolfTemplate
+	end
+	local ok, container = pcall(function()
+		return InsertService:LoadAsset(assetId)
+	end)
+	if not ok or not container then
+		warn("[Shift] could not load model", assetId, container)
+		return nil
+	end
+	local model = container:FindFirstChildWhichIsA("Model", true)
+	if model and model:FindFirstChildOfClass("Humanoid") and model:FindFirstChild("HumanoidRootPart") then
+		model.Parent = nil
+		container:Destroy()
+		wolfTemplate = model
+		return model
+	end
+	warn("[Shift] model", assetId, "is not a Humanoid rig (needs Humanoid + HumanoidRootPart)")
+	container:Destroy()
+	return nil
+end
+
+type Morph = { wolf: Model, human: Model }
+local morphs: { [Player]: Morph } = {}
+
+local function revertMorph(player: Player)
+	local m = morphs[player]
+	if not m then
+		return
+	end
+	morphs[player] = nil
+	local pivot = m.wolf:GetPivot()
+	m.human.Parent = Workspace
+	m.human:PivotTo(pivot)
+	player.Character = m.human
+	m.wolf:Destroy()
+end
+
+local function morphShift(ctx: Ctx, assetId: number): number?
+	if morphs[ctx.player] then
+		revertMorph(ctx.player)
+		return 1
+	end
+	local template = loadWolfTemplate(assetId)
+	if not template then
+		return nil -- caller falls back to the procedural beast
+	end
+	local human = ctx.character
+	local wolf = template:Clone()
+	wolf.Name = ctx.player.Name
+	-- Carry the default character scripts so the rig animates and can die.
+	for _, name in { "Animate", "Health" } do
+		local scr = human:FindFirstChild(name)
+		if scr then
+			scr:Clone().Parent = wolf
+		end
+	end
+	wolf:PivotTo(human:GetPivot())
+	wolf.Parent = Workspace
+	ctx.player.Character = wolf -- fires CharacterAdded; combat state re-registers
+	human.Parent = nil
+	morphs[ctx.player] = { wolf = wolf, human = human }
+
+	local whum = wolf:FindFirstChildOfClass("Humanoid")
+	if whum then
+		whum.WalkSpeed = 24
+		whum.MaxHealth = math.max(whum.MaxHealth, ctx.humanoid.MaxHealth + 60 + 15 * ctx.rank)
+		whum.Health = whum.MaxHealth
+		whum.Died:Connect(function()
+			-- The beast fell: restore the human and let normal death/respawn run.
+			if morphs[ctx.player] and morphs[ctx.player].wolf == wolf then
+				revertMorph(ctx.player)
+				local hh = human:FindFirstChildOfClass("Humanoid")
+				if hh then
+					hh.Health = 0
+				end
+			end
+		end)
+	end
+	local st = CombatService.state(wolf)
+	if st then
+		local w = if ctx.rank >= 5 then 1.3 else 1.6
+		st.weaknesses.Fire = w
+		st.weaknesses.Electric = w
+	end
+	local root = wolf:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		Effects.flash(root, BEAST, 4, 18, 0.8)
+		Effects.burst(root.Position, BEAST, 6, 0.4)
+	end
+	task.delay(12 + 4 * ctx.rank, function()
+		if morphs[ctx.player] and morphs[ctx.player].wolf == wolf then
+			revertMorph(ctx.player)
+		end
+	end)
+	return 1
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	local m = morphs[player]
+	if m then
+		morphs[player] = nil
+		m.human:Destroy()
+	end
+end)
+
 AbilityEffects.TheTurning = function(ctx)
 	if isTimed(ctx.character, "shift") then
 		clearTimed(ctx.character, "shift") -- toggle back to human
@@ -295,6 +453,16 @@ AbilityEffects.TheTurning = function(ctx)
 	local hum = ctx.humanoid
 	local rank = ctx.rank
 
+	-- A real werewolf avatar, if one is configured in AssetIds.
+	local kind, assetId = shiftAsset()
+	if kind == "model" and assetId then
+		local cd = morphShift(ctx, assetId)
+		if cd then
+			return cd
+		end
+		kind = nil -- load failed; fall back to the procedural beast
+	end
+
 	-- The beast, done the robust way: rewrite the avatar description. This
 	-- strips clothing textures (which hide plain part recolors), sets fur color
 	-- on every limb, and scales the whole rig — bigger hitbox, the drawback.
@@ -302,21 +470,34 @@ AbilityEffects.TheTurning = function(ctx)
 	local applied = pcall(function()
 		local desc = hum:GetAppliedDescription()
 		original = desc:Clone()
-		desc.HeadColor = FUR
-		desc.TorsoColor = FUR
-		desc.LeftArmColor = FUR
-		desc.RightArmColor = FUR
-		desc.LeftLegColor = FUR
-		desc.RightLegColor = FUR
-		desc.Shirt = 0
-		desc.Pants = 0
-		desc.GraphicTShirt = 0
-		desc.Face = 0
-		desc.HeightScale = desc.HeightScale * 1.3
-		desc.WidthScale = desc.WidthScale * 1.35
-		desc.DepthScale = desc.DepthScale * 1.3
-		desc.HeadScale = desc.HeadScale * 1.15
-		hum:ApplyDescription(desc)
+		local target = desc
+		if kind == "bundle" and assetId then
+			-- A real werewolf body from the Avatar Shop replaces the procedural fur.
+			local bd = bundleDescription(assetId)
+			if bd then
+				target = bd
+			else
+				kind = nil
+			end
+		end
+		if kind ~= "bundle" then
+			target.HeadColor = FUR
+			target.TorsoColor = FUR
+			target.LeftArmColor = FUR
+			target.RightArmColor = FUR
+			target.LeftLegColor = FUR
+			target.RightLegColor = FUR
+			target.Shirt = 0
+			target.Pants = 0
+			target.GraphicTShirt = 0
+			target.Face = 0
+		end
+		-- Bigger either way: the hitbox drawback is the design.
+		target.HeightScale = target.HeightScale * 1.3
+		target.WidthScale = target.WidthScale * 1.35
+		target.DepthScale = target.DepthScale * 1.3
+		target.HeadScale = target.HeadScale * 1.15
+		hum:ApplyDescription(target)
 	end)
 
 	-- Fallback for rigs without a description: scale values + recolor.
@@ -341,7 +522,7 @@ AbilityEffects.TheTurning = function(ctx)
 	-- Ears and glowing eyes so the silhouette reads as a wolf at night.
 	local extras: { Instance } = {}
 	local head = ctx.character:FindFirstChild("Head")
-	if head and head:IsA("BasePart") then
+	if kind ~= "bundle" and head and head:IsA("BasePart") then
 		local hx, hy, hz = head.Size.X, head.Size.Y, head.Size.Z
 		table.insert(extras, attachToHead(ctx.character, head, "WolfEarL", Vector3.new(0.35, 0.9, 0.25),
 			CFrame.new(-hx * 0.38, hy * 0.5 + 0.4, 0) * CFrame.Angles(0, 0, math.rad(18)), FUR, Enum.Material.Fabric))

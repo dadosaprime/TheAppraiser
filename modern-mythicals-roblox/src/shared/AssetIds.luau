@@ -22,7 +22,10 @@ local AssetIds = {}
 AssetIds.ClassModels = {
 	Witch = "",
 	Werewolf = "", -- human form
-	WerewolfShifted = "", -- the beast — larger hitbox
+	-- The beast. Accepts:  "bundle:<id>" (Avatar Shop bundle, cleanest)
+	--                       "rbxassetid://<id>" (Creator Store rig → morph)
+	--                       "" (procedural fur + ears + eyes)
+	WerewolfShifted = "",
 	Vampire = "",
 	Frankenstein = "",
 	Immortal = "",
