@@ -58,7 +58,7 @@ PerkTrees.WitchfireAegis = {
 	ability = "Flame Shield",
 	slot = 3,
 	role = "defense + melee",
-	summary = "Active stance. Adds parry and burns melee attackers. The Witch's answer to being closed on.",
+	summary = "Held form: locks a slice of Soul while up. Burns melee attackers, blunts hits. The Witch's answer to being closed on.",
 	ranks = {
 		r(1, "Flame Shield", "Grants parry. Melee attackers take fire damage."),
 		r(2, "Kindled Ward", "Longer duration, more retaliation damage."),
@@ -346,7 +346,7 @@ PerkTrees.Stillness = {
 	ability = "Vanish",
 	slot = 3,
 	role = "stealth + movement",
-	summary = "The Immortal's only traversal tool and whole identity. PASSIVE at all ranks: sense other Immortals nearby, always.",
+	summary = "Held form: stay hidden as long as you like; locks a slice of Soul. Attacking breaks it. PASSIVE at all ranks: sense other Immortals.",
 	ranks = {
 		r(1, "Vanish", "Go unseen while moving slowly. Broken by attacking or taking damage. (Passive: sense other Immortals.)"),
 		r(2, "Quiet Step", "Move faster while hidden. (Passive: sense other Immortals.)"),

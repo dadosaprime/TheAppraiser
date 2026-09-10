@@ -16,10 +16,18 @@ local player = Players.LocalPlayer
 
 -- Mirror of the server's per-role Soul costs, for display only.
 local SOUL_COST: { [string]: number } = {
-	["heavy offense"] = 8, ["heavy offense / control"] = 8, ["defense + melee"] = 6,
+	["heavy offense"] = 8, ["heavy offense / control"] = 8,
 	["defense / signature"] = 2, ["control"] = 7, ["control / team"] = 8,
 	["mobility offense"] = 5, ["escape"] = 8, ["movement"] = 4, ["utility / unlock"] = 3,
-	["utility / tracking"] = 4, ["stealth + movement"] = 6, ["burst"] = 4, ["revive / support"] = 10,
+	["utility / tracking"] = 4, ["burst"] = 4, ["revive / support"] = 10,
+}
+-- Held forms lock a share of the pool instead of costing Soul.
+local LOCK_PCT: { [string]: number } = { ["the shift"] = 40, ["defense + melee"] = 35, ["stealth + movement"] = 30 }
+local FORM_LABEL: { [string]: string } = { shift = "WOLF FORM", aegis = "FLAME SHIELD", vanish = "VANISHED" }
+local FORM_COLOR: { [string]: Color3 } = {
+	shift = Color3.fromRGB(120, 20, 30),
+	aegis = Color3.fromRGB(140, 70, 20),
+	vanish = Color3.fromRGB(40, 45, 80),
 }
 
 local HUD = {}
@@ -184,7 +192,8 @@ function HUD.update(profile: any)
 		if tree then
 			local tag = if class and treeId == class.attackTree then "🖱 " else ""
 			local cost = SOUL_COST[tree.role] or 0
-			local costText = if cost > 0 then ("  ·  %d Soul"):format(cost) else ""
+			local lockPct = LOCK_PCT[tree.role]
+			local costText = if lockPct then ("  ·  locks %d%%"):format(lockPct) elseif cost > 0 then ("  ·  %d Soul"):format(cost) else ""
 			slotButtons[slot].Text = ("%d  %s%s\nrank %d/%d%s"):format(slot, tag, tree.ability, owned, PerkTrees.MAX_RANK, costText)
 			slotButtons[slot].TextColor3 = if owned > 0 then Color3.fromRGB(230, 225, 240) else Color3.fromRGB(120, 115, 135)
 		else
@@ -206,8 +215,15 @@ function HUD.setStatus(status: any)
 			then ("SOUL %d / %d   ·   %d locked"):format(status.soul, status.soulMax - lockedAmt, lockedAmt)
 			else ("SOUL %d / %d"):format(status.soul, status.soulMax)
 	end
-	if status.shifted ~= nil then
-		formBadge.Visible = status.shifted == true
+	if status.form ~= nil then
+		local form = status.form
+		if type(form) == "string" and form ~= "" then
+			formBadge.Text = FORM_LABEL[form] or string.upper(form)
+			formBadge.BackgroundColor3 = FORM_COLOR[form] or Color3.fromRGB(60, 60, 70)
+			formBadge.Visible = true
+		else
+			formBadge.Visible = false
+		end
 	end
 end
 
