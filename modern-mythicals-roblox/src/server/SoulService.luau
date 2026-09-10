@@ -106,7 +106,14 @@ end
 
 function SoulService.init()
 	local function watch(player: Player)
-		player.CharacterAdded:Connect(function()
+		player.CharacterAdded:Connect(function(char)
+			-- The Werewolf's rig morph swaps Player.Character without a death;
+			-- the form (and its lock) must survive that swap. Only a real
+			-- respawn resets the pool.
+			if char:GetAttribute("MorphSwap") == true then
+				lastPushed[player] = nil
+				return
+			end
 			locked[player] = nil -- a new body holds no form
 			lockRank[player] = nil
 			lockKind[player] = nil

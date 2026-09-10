@@ -14,6 +14,7 @@ local InsertService = game:GetService("InsertService")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local GameConfig = require(Shared.GameConfig)
+local Net = require(Shared.Net)
 local AssetIds = require(Shared.AssetIds)
 local Skins = require(Shared.Skins)
 
@@ -249,6 +250,9 @@ local function setTimed(ctx: Ctx, key: string, duration: number, revert: () -> (
 	timed[ctx.character] = timed[ctx.character] or {}
 	local token = os.clock()
 	timed[ctx.character][key] = { token = token, revert = revert }
+	if duration == math.huge then
+		return -- held until clearTimed; nothing to schedule
+	end
 	task.delay(duration, function()
 		local t = timed[ctx.character] and timed[ctx.character][key]
 		if t and t.token == token then
@@ -541,6 +545,8 @@ local function morphShift(ctx: Ctx, template: Model): number?
 		end
 	end
 	wolf:PivotTo(human:GetPivot())
+	wolf:SetAttribute("MorphSwap", true)
+	human:SetAttribute("MorphSwap", true)
 	wolf.Parent = Workspace
 	ctx.player.Character = wolf -- fires CharacterAdded; combat state re-registers
 	human.Parent = nil
@@ -572,6 +578,9 @@ local function morphShift(ctx: Ctx, template: Model): number?
 	if root and root:IsA("BasePart") then
 		Effects.flash(root, C(ctx, "BEAST"), 4, 18, 0.8)
 		Effects.burst(root.Position, C(ctx, "BEAST"), 6, 0.4)
+	end
+	if GameConfig.Playtest.ShiftDiagnostics then
+		Net.get("Toast"):FireClient(ctx.player, "Wolf form: rig morph")
 	end
 	return 1
 end
@@ -640,17 +649,6 @@ AbilityEffects.TheTurning = function(ctx)
 				kind = nil
 			end
 		end
-		if kind == "accessories" and wearAccessories and assetId then
-			local list = target:GetAccessories(true)
-			for _, acc in wearAccessories do
-				table.insert(list, {
-					AssetId = assetId,
-					AccessoryType = acc.AccessoryType,
-					IsLayered = LAYERED[acc.AccessoryType] == true,
-				})
-			end
-			target:SetAccessories(list, true)
-		end
 		if kind ~= "bundle" then
 			target.HeadColor = FUR
 			target.TorsoColor = FUR
@@ -670,6 +668,31 @@ AbilityEffects.TheTurning = function(ctx)
 		target.HeadScale = target.HeadScale * 1.15
 		hum:ApplyDescription(target)
 	end)
+	if not applied then
+		warn("[Shift] ApplyDescription failed for", ctx.player.Name, "— using recolor fallback")
+	end
+	-- Costume accessories from the configured asset go on after the
+	-- description is applied (ApplyDescription would strip them otherwise).
+	local wornClones: { Accessory } = {}
+	if wearAccessories then
+		for _, acc in wearAccessories do
+			local clone = acc:Clone()
+			local okWear = pcall(function()
+				hum:AddAccessory(clone)
+			end)
+			if okWear then
+				table.insert(wornClones, clone)
+			else
+				clone:Destroy()
+			end
+		end
+	end
+	if GameConfig.Playtest.ShiftDiagnostics then
+		local how = if kind == "accessories" then ("costume · %d accessories"):format(#wornClones)
+			elseif kind == "bundle" then "bundle"
+			else "procedural beast"
+		Net.get("Toast"):FireClient(ctx.player, ("Wolf form: %s%s"):format(how, if applied then "" else " (recolor fallback)"))
+	end
 
 	-- Fallback for rigs without a description: scale values + recolor.
 	local scaleOriginals: { [NumberValue]: number } = {}
@@ -737,6 +760,9 @@ AbilityEffects.TheTurning = function(ctx)
 		SoulService.unlock(ctx.player)
 		for _, e in extras do
 			e:Destroy()
+		end
+		for _, a in wornClones do
+			a:Destroy()
 		end
 		if original and hum.Parent then
 			pcall(function()

@@ -48,6 +48,9 @@ GameConfig.Playtest = {
 	-- Until Developer Products exist (game must be published), the store grants
 	-- skins for free so the buy/equip flow can be tested. Turn OFF for launch.
 	FreeSkins = true,
+	-- Toast which shift path ran (rig morph / costume / procedural) and
+	-- any ability error, so playtests don't need the Output window.
+	ShiftDiagnostics = true,
 }
 
 -- ── Spawning (rotating hot zones) ──────────────────────────────────────────

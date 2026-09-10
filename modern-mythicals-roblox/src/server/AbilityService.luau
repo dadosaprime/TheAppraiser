@@ -138,7 +138,14 @@ function AbilityService.activate(player: Player, slot: number, target: any?): Ac
 	end
 
 	-- Run the effect. Effects may return a cooldown override and/or a refusal.
-	local cdOverride, err = AbilityService.runEffect(player, treeId, rank, target)
+	-- A thrown error is reported to the player instead of silently killing
+	-- the remote handler (which looked like "nothing happened" in playtest).
+	local okRun, cdOverride, err = pcall(AbilityService.runEffect, player, treeId, rank, target)
+	if not okRun then
+		warn(("[Ability] %s errored for %s: %s"):format(treeId, player.Name, tostring(cdOverride)))
+		err = ("%s failed: %s"):format(tree.ability, tostring(cdOverride))
+		cdOverride = nil
+	end
 	if err then
 		if cost > 0 then
 			SoulService.restore(player, cost)
