@@ -75,8 +75,8 @@ def _osm_pass(config: DistrictConfig, place: Place) -> None:
     """Optional: overlay real building footprints from OpenStreetMap."""
     import osm
 
-    origin = getattr(config, "osm_origin", None)
-    bbox = getattr(config, "osm_bbox", None)
+    origin = config.osm_origin
+    bbox = config.osm_bbox
     if not origin or not bbox:
         print("No osm_origin/osm_bbox in config; skipping OSM pass.", file=sys.stderr)
         return

@@ -14,7 +14,7 @@ local DataService = require(script.Parent.DataService)
 
 local ProgressionService = {}
 
-export type Result = { ok: boolean, err: string?, profile: any? }
+export type Result = { ok: boolean, err: string?, profile: any?, rankedUp: boolean? }
 
 local function fail(err: string): Result
 	return { ok = false, err = err }
@@ -55,7 +55,7 @@ function ProgressionService.purchaseBox(player: Player): Result
 
 	DataService.markDirty(player)
 	ProgressionService._push(player, profile)
-	return { ok = true, profile = profile, err = if rankedUp then "RANK_UP" else nil }
+	return { ok = true, profile = profile, rankedUp = rankedUp }
 end
 
 -- Is a tree one this player is allowed to buy into?

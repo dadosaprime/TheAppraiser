@@ -72,4 +72,6 @@ export type EnemyArchetype = {
 	notes: string,
 }
 
-return nil
+-- ModuleScripts must return exactly one non-nil value; the exported types
+-- above are what callers actually consume.
+return {}

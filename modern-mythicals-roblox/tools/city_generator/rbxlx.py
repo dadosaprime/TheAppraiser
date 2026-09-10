@@ -35,8 +35,7 @@ class Part:
         px, py, pz = self.position
         sx, sy, sz = self.size
         r, g, b = self.color
-        # Color3uint8 is packed as (r<<16)|(g<<8)|b on an ARGB-style int; Roblox
-        # reads the low 24 bits. We also emit legacy Color for older importers.
+        # Color3uint8 is packed as (r<<16)|(g<<8)|b; Roblox reads the low 24 bits.
         packed = (r << 16) | (g << 8) | b
         name = html.escape(self.name)
         return f"""  <Item class="Part" referent="{_ref()}">
@@ -65,8 +64,8 @@ _MATERIALS = {
     "Concrete": 816,
     "Brick": 848,
     "Cobblestone": 880,
-    "Sand": 864,
-    "Asphalt": 1280,
+    "Sand": 1296,
+    "Asphalt": 1376,
     "Glass": 1568,
     "Neon": 288,
     "Wood": 512,

@@ -48,6 +48,9 @@ class DistrictConfig:
     roads: dict[str, Road]
     plots: list[Plot]
     neon_palette: dict[str, list[int]]
+    # Optional real-map pass (see osm.py): [lat, lon] origin and [s, w, n, e] bbox.
+    osm_origin: list[float] | None = None
+    osm_bbox: list[float] | None = None
 
     @staticmethod
     def load(path: str) -> "DistrictConfig":
@@ -70,6 +73,8 @@ class DistrictConfig:
             roads=roads,
             plots=plots,
             neon_palette=data.get("neon_palette", {}),
+            osm_origin=data.get("osm_origin"),
+            osm_bbox=data.get("osm_bbox"),
         )
 
 

@@ -23,16 +23,16 @@ local EVERGLADES = {
 	waterLevel = -2,
 }
 
--- Deterministic value noise from the seed (no external deps).
-local function noise2(rng: Random, x: number, z: number): number
-	-- Roblox's math.noise is deterministic; offset by seed-derived phase.
-	local phase = rng:NextNumber(0, 1000)
+-- Deterministic value noise. `phase` is drawn ONCE per generation from the
+-- seeded RNG so adjacent cells stay spatially coherent (rolling, not jagged).
+local function noise2(phase: number, x: number, z: number): number
 	return math.noise(x / 96 + phase, z / 96 + phase)
 end
 
 function TerrainGenerator.generateEverglades()
 	local terrain = Workspace.Terrain
 	local rng = Random.new(TerrainGenerator.SEED)
+	local phase = rng:NextNumber(0, 1000)
 
 	local o = EVERGLADES.origin
 	local s = EVERGLADES.size
@@ -40,7 +40,7 @@ function TerrainGenerator.generateEverglades()
 
 	for x = 0, s.X - step, step do
 		for z = 0, s.Z - step, step do
-			local h = noise2(rng, x, z) * 6 -- gentle undulation
+			local h = noise2(phase, x, z) * 6 -- gentle undulation
 			local groundTop = o.Y + h
 			local region = Region3.new(
 				Vector3.new(o.X + x, o.Y - 8, o.Z + z),
