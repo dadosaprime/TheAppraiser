@@ -98,7 +98,7 @@ Net.get("ActivateAbility").OnServerEvent:Connect(function(player, payload)
 	if type(payload) ~= "table" or type(payload.slot) ~= "number" then
 		return
 	end
-	local result = AbilityService.activate(player, payload.slot, payload.target)
+	local result = AbilityService.activate(player, payload.slot, payload.aimPoint)
 	Net.get("AbilityFeedback"):FireClient(player, {
 		slot = payload.slot,
 		ok = result.ok,

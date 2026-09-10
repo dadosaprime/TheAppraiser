@@ -54,7 +54,7 @@ function HUD.build()
 
 	local hint = makeLabel(
 		gui,
-		"1–5 abilities   ·   Shift+1–5 buy rank   ·   B buy Soul box",
+		"Click / 1 attack   ·   2–5 abilities   ·   Shift+1–5 buy rank   ·   B buy Soul box",
 		UDim2.fromScale(0.25, 0.905),
 		UDim2.fromScale(0.5, 0.03)
 	)

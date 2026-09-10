@@ -155,7 +155,8 @@ local function heal(ctx: Ctx, amount: number)
 end
 
 local function bolt(ctx: Ctx, color: Color3, speed: number, range: number, damage: number, dmgType: string, radius: number, onHit: ((pos: Vector3, model: Model?) -> ())?)
-	local origin = ctx.root.Position + ctx.aim * 2 + Vector3.new(0, 1, 0)
+	-- Start just outside the body at chest height, along the aim.
+	local origin = ctx.root.Position + Vector3.new(0, 0.5, 0) + ctx.aim * 3
 	Effects.flash(ctx.root, color, 1.5, 10, 0.25)
 	Effects.projectile(origin, ctx.aim, {
 		color = color,
@@ -228,11 +229,11 @@ end
 -- ═══════════════════════════ WITCH ═══════════════════════════
 AbilityEffects.Emberhand = function(ctx)
 	local dmg = 22 + 6 * ctx.rank
-	bolt(ctx, FIRE, 90, 120, dmg, "Fire", 0.7)
+	bolt(ctx, FIRE, 80, 140, dmg, "Fire", 1.0)
 	if ctx.rank >= 4 then
 		task.delay(0.12, function()
 			if ctx.character.Parent then
-				bolt(ctx, FIRE, 90, 120, dmg, "Fire", 0.7)
+				bolt(ctx, FIRE, 80, 140, dmg, "Fire", 1.0)
 			end
 		end)
 	end
@@ -262,6 +263,29 @@ end
 
 -- ═══════════════════════════ WEREWOLF ═══════════════════════════
 local SCALE_NAMES = { "BodyHeightScale", "BodyWidthScale", "BodyDepthScale", "HeadScale" }
+local FUR = Color3.fromRGB(48, 36, 32)
+local EYE = Color3.fromRGB(255, 40, 40)
+
+-- Weld a cosmetic part to the head (ears, eyes). Massless so physics ignores it.
+local function attachToHead(character: Model, head: BasePart, name: string, size: Vector3, offset: CFrame, color: Color3, material: Enum.Material): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.Color = color
+	p.Material = material
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.CFrame = head.CFrame * offset
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = head
+	weld.Part1 = p
+	weld.Parent = p
+	p.Parent = character
+	return p
+end
 
 AbilityEffects.TheTurning = function(ctx)
 	if isTimed(ctx.character, "shift") then
@@ -271,23 +295,72 @@ AbilityEffects.TheTurning = function(ctx)
 	local hum = ctx.humanoid
 	local rank = ctx.rank
 
-	-- Bigger: the drawback is physical. Larger hitbox, easier to hit.
+	-- The beast, done the robust way: rewrite the avatar description. This
+	-- strips clothing textures (which hide plain part recolors), sets fur color
+	-- on every limb, and scales the whole rig — bigger hitbox, the drawback.
+	local original: HumanoidDescription? = nil
+	local applied = pcall(function()
+		local desc = hum:GetAppliedDescription()
+		original = desc:Clone()
+		desc.HeadColor = FUR
+		desc.TorsoColor = FUR
+		desc.LeftArmColor = FUR
+		desc.RightArmColor = FUR
+		desc.LeftLegColor = FUR
+		desc.RightLegColor = FUR
+		desc.Shirt = 0
+		desc.Pants = 0
+		desc.GraphicTShirt = 0
+		desc.Face = 0
+		desc.HeightScale = desc.HeightScale * 1.3
+		desc.WidthScale = desc.WidthScale * 1.35
+		desc.DepthScale = desc.DepthScale * 1.3
+		desc.HeadScale = desc.HeadScale * 1.15
+		hum:ApplyDescription(desc)
+	end)
+
+	-- Fallback for rigs without a description: scale values + recolor.
 	local scaleOriginals: { [NumberValue]: number } = {}
-	for _, name in SCALE_NAMES do
-		local v = hum:FindFirstChild(name)
-		if v and v:IsA("NumberValue") then
-			scaleOriginals[v] = v.Value
-			v.Value = v.Value * (if name == "HeadScale" then 1.15 else 1.3)
-		end
-	end
-	-- Darker: the beast.
 	local colorOriginals: { [BasePart]: Color3 } = {}
-	for _, d in ctx.character:GetDescendants() do
-		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
-			colorOriginals[d] = d.Color
-			d.Color = Color3.fromRGB(58, 44, 40)
+	if not applied then
+		for _, name in SCALE_NAMES do
+			local v = hum:FindFirstChild(name)
+			if v and v:IsA("NumberValue") then
+				scaleOriginals[v] = v.Value
+				v.Value = v.Value * (if name == "HeadScale" then 1.15 else 1.3)
+			end
+		end
+		for _, d in ctx.character:GetDescendants() do
+			if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
+				colorOriginals[d] = d.Color
+				d.Color = FUR
+			end
 		end
 	end
+
+	-- Ears and glowing eyes so the silhouette reads as a wolf at night.
+	local extras: { Instance } = {}
+	local head = ctx.character:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		local hx, hy, hz = head.Size.X, head.Size.Y, head.Size.Z
+		table.insert(extras, attachToHead(ctx.character, head, "WolfEarL", Vector3.new(0.35, 0.9, 0.25),
+			CFrame.new(-hx * 0.38, hy * 0.5 + 0.4, 0) * CFrame.Angles(0, 0, math.rad(18)), FUR, Enum.Material.Fabric))
+		table.insert(extras, attachToHead(ctx.character, head, "WolfEarR", Vector3.new(0.35, 0.9, 0.25),
+			CFrame.new(hx * 0.38, hy * 0.5 + 0.4, 0) * CFrame.Angles(0, 0, math.rad(-18)), FUR, Enum.Material.Fabric))
+		local eyeL = attachToHead(ctx.character, head, "WolfEyeL", Vector3.new(0.2, 0.12, 0.1),
+			CFrame.new(-hx * 0.18, hy * 0.08, -hz / 2 - 0.03), EYE, Enum.Material.Neon)
+		local eyeR = attachToHead(ctx.character, head, "WolfEyeR", Vector3.new(0.2, 0.12, 0.1),
+			CFrame.new(hx * 0.18, hy * 0.08, -hz / 2 - 0.03), EYE, Enum.Material.Neon)
+		table.insert(extras, eyeL)
+		table.insert(extras, eyeR)
+		local glow = Instance.new("PointLight")
+		glow.Color = EYE
+		glow.Brightness = 1.5
+		glow.Range = 9
+		glow.Shadows = false
+		glow.Parent = eyeL
+	end
+
 	-- Faster, tougher.
 	local speed0, maxHp0 = hum.WalkSpeed, hum.MaxHealth
 	local bonusHp = 60 + 15 * rank
@@ -308,6 +381,14 @@ AbilityEffects.TheTurning = function(ctx)
 	Effects.burst(ctx.root.Position, BEAST, 6, 0.4)
 
 	setTimed(ctx, "shift", 12 + 4 * rank, function()
+		for _, e in extras do
+			e:Destroy()
+		end
+		if original and hum.Parent then
+			pcall(function()
+				hum:ApplyDescription(original :: HumanoidDescription)
+			end)
+		end
 		for v, val in scaleOriginals do
 			if v.Parent then
 				v.Value = val
@@ -323,10 +404,10 @@ AbilityEffects.TheTurning = function(ctx)
 			hum.MaxHealth = maxHp0
 			hum.Health = math.min(hum.Health, maxHp0)
 		end
-		local s = CombatService.state(ctx.character)
-		if s then
-			s.weaknesses.Fire = nil
-			s.weaknesses.Electric = nil
+		local s2 = CombatService.state(ctx.character)
+		if s2 then
+			s2.weaknesses.Fire = nil
+			s2.weaknesses.Electric = nil
 		end
 	end)
 	return 1
@@ -427,7 +508,7 @@ end
 -- ═══════════════════════════ FRANKENSTEIN ═══════════════════════════
 AbilityEffects.TheSpark = function(ctx)
 	local dmg = 18 + 5 * ctx.rank
-	bolt(ctx, ELECTRIC, 140, 110, dmg, "Electric", 0.6, function(pos, model)
+	bolt(ctx, ELECTRIC, 120, 130, dmg, "Electric", 0.9, function(pos, model)
 		if ctx.rank >= 3 then -- Arc: chain to one nearby
 			for _, m in targetsInRadius(pos, 15, ctx.character) do
 				if m ~= model then

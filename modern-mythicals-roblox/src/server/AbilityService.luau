@@ -119,7 +119,15 @@ function AbilityService.runEffect(player: Player, treeId: string, rank: number, 
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if effect and character and humanoid and root and root:IsA("BasePart") and humanoid.Health > 0 then
-		local aim = if typeof(target) == "Vector3" and target.Magnitude > 0 then target.Unit else root.CFrame.LookVector
+		-- `target` is a world point (under the player's cursor). Aim from chest
+		-- height toward it; fall back to facing direction.
+		local aim = root.CFrame.LookVector
+		if typeof(target) == "Vector3" then
+			local d = target - (root.Position + Vector3.new(0, 0.5, 0))
+			if d.Magnitude > 1 then
+				aim = d.Unit
+			end
+		end
 		return effect({
 			player = player,
 			character = character,

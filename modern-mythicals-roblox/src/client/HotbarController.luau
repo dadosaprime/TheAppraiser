@@ -3,11 +3,13 @@
 -- The client only REQUESTS activation; the server is authoritative (see AbilityService).
 --
 -- Playtest keybinds (documented in the HUD hint):
+--   Left click   basic attack (slot 1)
 --   1-5          activate the ability on that slot
 --   Shift + 1-5  buy the next rank of the tree on that slot (Soul Shards)
 --   B            buy the next Soul-Rank box (Soul Shards)
 
 local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
@@ -31,6 +33,17 @@ local KEY_TO_SLOT: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Four] = 4,
 	[Enum.KeyCode.Five] = 5,
 }
+
+-- World point under the mouse cursor. Mouse.Hit ignores the local character; the
+-- FX folder is filtered so projectiles don't block their own aim.
+local function aimPoint(): Vector3?
+	local mouse = Players.LocalPlayer:GetMouse()
+	local fx = Workspace:FindFirstChild("FX")
+	if fx then
+		mouse.TargetFilter = fx
+	end
+	return mouse.Hit.Position
+end
 
 local function shiftHeld(): boolean
 	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
@@ -79,13 +92,15 @@ function HotbarController.start()
 			return
 		end
 		local slot = KEY_TO_SLOT[input.KeyCode]
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			slot = 1 -- left click = basic attack
+		end
 		if slot then
-			if shiftHeld() then
+			if shiftHeld() and input.UserInputType == Enum.UserInputType.Keyboard then
 				task.spawn(purchasePerkForSlot, slot)
 			else
-				-- Aim where the camera looks; the server validates and normalizes it.
-				local cam = Workspace.CurrentCamera
-				activate:FireServer({ slot = slot, target = if cam then cam.CFrame.LookVector else nil })
+				-- Aim at the point under the cursor; the server validates it.
+				activate:FireServer({ slot = slot, aimPoint = aimPoint() })
 			end
 		elseif input.KeyCode == Enum.KeyCode.B then
 			task.spawn(purchaseBox)
