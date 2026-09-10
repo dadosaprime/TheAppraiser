@@ -1,9 +1,10 @@
 {
 	"name": "ModernMythicals",
-	"globIgnorePaths": ["**/*.spec.luau"],
+	"globIgnorePaths": [
+		"**/*.spec.luau"
+	],
 	"tree": {
 		"$className": "DataModel",
-
 		"ReplicatedStorage": {
 			"$className": "ReplicatedStorage",
 			"Shared": {
@@ -14,7 +15,6 @@
 				"$optional": true
 			}
 		},
-
 		"ServerScriptService": {
 			"$className": "ServerScriptService",
 			"Server": {
@@ -25,7 +25,6 @@
 				"$optional": true
 			}
 		},
-
 		"StarterPlayer": {
 			"$className": "StarterPlayer",
 			"StarterPlayerScripts": {
@@ -35,7 +34,6 @@
 				}
 			}
 		},
-
 		"Workspace": {
 			"$className": "Workspace",
 			"$properties": {
@@ -44,17 +42,74 @@
 				"FilteringEnabled": true
 			}
 		},
-
 		"Lighting": {
 			"$className": "Lighting",
 			"$properties": {
+				"Technology": "Future",
 				"ClockTime": 0,
 				"Brightness": 1,
+				"Ambient": [
+					0.1,
+					0.1,
+					0.16
+				],
+				"OutdoorAmbient": [
+					0.12,
+					0.12,
+					0.2
+				],
+				"ColorShift_Top": [
+					0.78,
+					0.7,
+					1.0
+				],
 				"GlobalShadows": true,
-				"Technology": "Future"
+				"ShadowSoftness": 0.2,
+				"EnvironmentDiffuseScale": 0.3,
+				"EnvironmentSpecularScale": 0.6,
+				"ExposureCompensation": 0.2
+			},
+			"Atmosphere": {
+				"$className": "Atmosphere",
+				"$properties": {
+					"Density": 0.35,
+					"Offset": 0.25,
+					"Color": [
+						0.59,
+						0.63,
+						0.78
+					],
+					"Decay": [
+						0.24,
+						0.27,
+						0.39
+					],
+					"Glare": 0.3,
+					"Haze": 2
+				}
+			},
+			"Bloom": {
+				"$className": "BloomEffect",
+				"$properties": {
+					"Intensity": 0.6,
+					"Size": 24,
+					"Threshold": 1.2
+				}
+			},
+			"ColorCorrection": {
+				"$className": "ColorCorrectionEffect",
+				"$properties": {
+					"Brightness": 0,
+					"Contrast": 0.15,
+					"Saturation": -0.05,
+					"TintColor": [
+						0.86,
+						0.88,
+						1.0
+					]
+				}
 			}
 		},
-
 		"SoundService": {
 			"$className": "SoundService",
 			"$properties": {
