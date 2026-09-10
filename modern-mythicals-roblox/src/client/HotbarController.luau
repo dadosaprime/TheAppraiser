@@ -1,13 +1,27 @@
 --!strict
 -- Hotbar input. One tree, one button — keys 1..5 map straight to ability slots.
 -- The client only REQUESTS activation; the server is authoritative (see AbilityService).
+--
+-- Playtest keybinds (documented in the HUD hint):
+--   1-5          activate the ability on that slot
+--   Shift + 1-5  buy the next rank of the tree on that slot (Soul Shards)
+--   B            buy the next Soul-Rank box (Soul Shards)
 
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local Net = require(Shared.Net)
+local Classes = require(Shared.Classes)
 
 local HotbarController = {}
+
+-- Set by the client bootstrap from the latest profile.
+HotbarController.currentClass = nil :: string?
+
+-- Called with (slot, feedback) so the HUD can flash cooldowns/errors.
+HotbarController.onFeedback = function(_slot: number, _feedback: any) end
+-- Called with a short player-facing message (purchases, errors).
+HotbarController.onMessage = function(_msg: string) end
 
 local KEY_TO_SLOT: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.One] = 1,
@@ -17,8 +31,44 @@ local KEY_TO_SLOT: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Five] = 5,
 }
 
--- Optional: called with (slot, feedback) so the HUD can flash cooldowns/errors.
-HotbarController.onFeedback = function(_slot: number, _feedback: any) end
+local function shiftHeld(): boolean
+	return UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+end
+
+local function purchasePerkForSlot(slot: number)
+	local classId = HotbarController.currentClass
+	if not classId then
+		HotbarController.onMessage("Choose a class first.")
+		return
+	end
+	local class = Classes.get(classId :: any)
+	local treeId = class and class.trees[slot]
+	if not treeId then
+		return
+	end
+	local result = Net.get("PurchasePerk"):InvokeServer(treeId)
+	if type(result) ~= "table" then
+		return
+	end
+	if result.ok then
+		local rank = result.profile and result.profile.perks[treeId] or 0
+		HotbarController.onMessage(("%s → rank %d"):format(treeId, rank))
+	else
+		HotbarController.onMessage(result.err or "purchase failed")
+	end
+end
+
+local function purchaseBox()
+	local result = Net.get("PurchaseBox"):InvokeServer()
+	if type(result) ~= "table" then
+		return
+	end
+	if result.ok then
+		HotbarController.onMessage(if result.rankedUp then "SOUL RANK UP!" else "Bought a Soul box.")
+	else
+		HotbarController.onMessage(result.err or "cannot buy box")
+	end
+end
 
 function HotbarController.start()
 	local activate = Net.get("ActivateAbility")
@@ -29,8 +79,14 @@ function HotbarController.start()
 		end
 		local slot = KEY_TO_SLOT[input.KeyCode]
 		if slot then
-			-- Target resolution (mouse hit / lock-on) can be added here later.
-			activate:FireServer({ slot = slot, target = nil })
+			if shiftHeld() then
+				task.spawn(purchasePerkForSlot, slot)
+			else
+				-- Target resolution (mouse hit / lock-on) can be added here later.
+				activate:FireServer({ slot = slot, target = nil })
+			end
+		elseif input.KeyCode == Enum.KeyCode.B then
+			task.spawn(purchaseBox)
 		end
 	end)
 

@@ -1,6 +1,7 @@
 --!strict
--- Minimal HUD, built in code (no Studio needed). Shows class, Soul Rank + box
--- progress, Soul Shards, and a five-slot hotbar with the class's ability names.
+-- Minimal HUD, built in code (no Studio needed). Shows Soul Rank + box
+-- progress, Soul Shards, a five-slot hotbar with the class's ability names and
+-- owned ranks, a toast line for messages, and a keybind hint.
 -- Intentionally plain — this is a functional scaffold, not the final art pass.
 
 local Players = game:GetService("Players")
@@ -17,7 +18,10 @@ local HUD = {}
 local gui: ScreenGui
 local rankLabel: TextLabel
 local shardLabel: TextLabel
+local classLabel: TextLabel
+local toastLabel: TextLabel
 local slotButtons: { TextButton } = {}
+local toastSerial = 0
 
 local function makeLabel(parent: Instance, text: string, pos: UDim2, size: UDim2): TextLabel
 	local label = Instance.new("TextLabel")
@@ -40,8 +44,22 @@ function HUD.build()
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	rankLabel = makeLabel(gui, "Soul Rank —", UDim2.fromScale(0.01, 0.02), UDim2.fromScale(0.18, 0.05))
-	shardLabel = makeLabel(gui, "Shards: —", UDim2.fromScale(0.01, 0.08), UDim2.fromScale(0.18, 0.05))
+	classLabel = makeLabel(gui, "—", UDim2.fromScale(0.01, 0.02), UDim2.fromScale(0.18, 0.05))
+	rankLabel = makeLabel(gui, "Soul Rank —", UDim2.fromScale(0.01, 0.08), UDim2.fromScale(0.18, 0.05))
+	shardLabel = makeLabel(gui, "Shards: —", UDim2.fromScale(0.01, 0.14), UDim2.fromScale(0.18, 0.05))
+
+	toastLabel = makeLabel(gui, "", UDim2.fromScale(0.3, 0.02), UDim2.fromScale(0.4, 0.05))
+	toastLabel.BackgroundTransparency = 1
+	toastLabel.TextColor3 = Color3.fromRGB(255, 225, 150)
+
+	local hint = makeLabel(
+		gui,
+		"1–5 abilities   ·   Shift+1–5 buy rank   ·   B buy Soul box",
+		UDim2.fromScale(0.25, 0.905),
+		UDim2.fromScale(0.5, 0.03)
+	)
+	hint.BackgroundTransparency = 1
+	hint.TextColor3 = Color3.fromRGB(150, 145, 170)
 
 	-- Five-slot hotbar centered at the bottom.
 	local bar = Instance.new("Frame")
@@ -70,23 +88,7 @@ function HUD.build()
 	end
 end
 
--- Update the hotbar labels from the player's class.
-function HUD.setClass(classId: string?)
-	if not classId then
-		return
-	end
-	local class = Classes.get(classId)
-	if not class then
-		return
-	end
-	for slot = 1, 5 do
-		local treeId = class.trees[slot]
-		local tree = treeId and PerkTrees.get(treeId)
-		slotButtons[slot].Text = ("%d\n%s"):format(slot, tree and tree.ability or "")
-	end
-end
-
--- Refresh live numbers from a pushed profile.
+-- Refresh live numbers + hotbar labels from a pushed profile.
 function HUD.update(profile: any)
 	if not profile then
 		return
@@ -97,7 +99,32 @@ function HUD.update(profile: any)
 		SoulRanks.BOXES_PER_RANK
 	)
 	shardLabel.Text = ("Shards: %d"):format(profile.soulShards)
-	HUD.setClass(profile.class)
+
+	local class = profile.class and Classes.get(profile.class)
+	classLabel.Text = class and class.displayName or "No class"
+	for slot = 1, 5 do
+		local treeId = class and class.trees[slot]
+		local tree = treeId and PerkTrees.get(treeId)
+		local owned = treeId and (profile.perks[treeId] or 0) or 0
+		if tree then
+			slotButtons[slot].Text = ("%d  %s\nrank %d/%d"):format(slot, tree.ability, owned, PerkTrees.MAX_RANK)
+			slotButtons[slot].TextColor3 = if owned > 0 then Color3.fromRGB(230, 225, 240) else Color3.fromRGB(120, 115, 135)
+		else
+			slotButtons[slot].Text = tostring(slot)
+		end
+	end
+end
+
+-- Short message at the top; fades after a moment.
+function HUD.toast(msg: string)
+	toastSerial += 1
+	local mine = toastSerial
+	toastLabel.Text = msg
+	task.delay(2.5, function()
+		if toastSerial == mine then
+			toastLabel.Text = ""
+		end
+	end)
 end
 
 -- Flash a slot on cooldown / error feedback.
@@ -106,8 +133,7 @@ function HUD.flashSlot(slot: number, feedback: any)
 	if not btn then
 		return
 	end
-	local color = feedback.ok and Color3.fromRGB(60, 120, 60) or Color3.fromRGB(140, 50, 50)
-	btn.BackgroundColor3 = color
+	btn.BackgroundColor3 = if feedback.ok then Color3.fromRGB(60, 120, 60) else Color3.fromRGB(140, 50, 50)
 	task.delay(0.2, function()
 		btn.BackgroundColor3 = Color3.fromRGB(28, 22, 40)
 	end)

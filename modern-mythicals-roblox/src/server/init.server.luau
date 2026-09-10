@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local Shared = game:GetService("ReplicatedStorage").Shared
 local Net = require(Shared.Net)
 local Classes = require(Shared.Classes)
+local GameConfig = require(Shared.GameConfig)
 
 local DataService = require(script.DataService)
 local ProgressionService = require(script.ProgressionService)
@@ -66,6 +67,8 @@ Net.get("ChooseClass").OnServerInvoke = function(player, classId)
 		if class then
 			profile.perks[class.trees[1]] = math.max(profile.perks[class.trees[1]] or 0, 1)
 		end
+		-- Playtest: seed shards so progression can be exercised immediately.
+		profile.soulShards += GameConfig.Playtest.StartingShards
 		DataService.markDirty(player)
 		pushProfile(player, profile)
 		return { ok = true }
@@ -74,7 +77,11 @@ Net.get("ChooseClass").OnServerInvoke = function(player, classId)
 end
 
 Net.get("PurchaseBox").OnServerInvoke = function(player)
-	return ProgressionService.purchaseBox(player)
+	local result = ProgressionService.purchaseBox(player)
+	if result.ok and result.rankedUp and result.profile then
+		Net.get("Toast"):FireClient(player, ("Soul Rank %d!"):format(result.profile.soulRank))
+	end
+	return result
 end
 
 Net.get("PurchasePerk").OnServerInvoke = function(player, treeId)

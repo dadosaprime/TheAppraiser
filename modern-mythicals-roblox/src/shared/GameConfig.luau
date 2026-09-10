@@ -35,6 +35,13 @@ GameConfig.Combat = {
 	GlobalCooldownSeconds = 0.4,
 }
 
+-- ── Playtest conveniences (strip before launch) ────────────────────────────
+GameConfig.Playtest = {
+	-- Granted once when a class is first chosen, so box/perk purchasing can be
+	-- exercised before real shard income (kills, quests) exists. PLACEHOLDER.
+	StartingShards = 25000,
+}
+
 -- ── Spawning (rotating hot zones) ──────────────────────────────────────────
 GameConfig.Spawns = {
 	HotZonesPerNight = 3,
