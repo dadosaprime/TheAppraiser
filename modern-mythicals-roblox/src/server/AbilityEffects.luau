@@ -193,6 +193,11 @@ local function hit(target: Model, amount: number, dmgType: string, attacker: Mod
 			if killer then
 				ProgressionService.awardShards(killer, reward)
 				SoulService.restore(killer, SoulService.KILL_RESTORE) -- a fight feeds you
+				local cashDrop = target:GetAttribute("CashReward")
+				if typeof(cashDrop) == "number" and cashDrop > 0 then
+					target:SetAttribute("CashReward", nil)
+					ProgressionService.awardCash(killer, math.random(math.floor(cashDrop * 0.6), cashDrop))
+				end
 				if p then
 					Effects.damageNumber(p + Vector3.new(0, 2, 0), reward, Color3.fromRGB(255, 215, 90))
 				end

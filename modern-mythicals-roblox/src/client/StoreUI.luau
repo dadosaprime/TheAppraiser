@@ -15,7 +15,7 @@ local StoreUI = {}
 
 local gui: ScreenGui? = nil
 local profile: any = nil
-local rows: { [string]: { button: TextButton, price: TextLabel } } = {}
+local rows: { [string]: { button: TextButton, cash: TextButton } } = {}
 local onMessage: (string) -> () = function() end
 
 local function refreshRows()
@@ -28,6 +28,8 @@ local function refreshRows()
 			local owned = profile.cosmetics and profile.cosmetics[id] == true
 			local equipped = profile.equipped and profile.equipped[skin.category] == id
 			local fits = Skins.fitsClass(skin, profile.class)
+			-- The cash button only shows while the skin is unowned and fits.
+			r.cash.Visible = fits and not owned
 			if not fits then
 				r.button.Text = ("%s only"):format(skin.class or "?")
 				r.button.BackgroundColor3 = Color3.fromRGB(40, 36, 48)
@@ -41,7 +43,10 @@ local function refreshRows()
 				r.button.BackgroundColor3 = Color3.fromRGB(70, 60, 120)
 				r.button.AutoButtonColor = true
 			else
-				r.button.Text = ("Buy  R$%d"):format(skin.price)
+				local have = if profile.cash then profile.cash else 0
+				r.cash.Text = ("$%d"):format(skin.cashPrice)
+				r.cash.BackgroundColor3 = if have >= skin.cashPrice then Color3.fromRGB(40, 110, 70) else Color3.fromRGB(50, 46, 60)
+				r.button.Text = ("R$ %d"):format(skin.price)
 				r.button.BackgroundColor3 = Color3.fromRGB(120, 80, 40)
 				r.button.AutoButtonColor = true
 			end
@@ -81,7 +86,7 @@ local function build()
 	hint.Position = UDim2.fromScale(0, 0.09)
 	hint.Size = UDim2.fromScale(1, 0.04)
 	hint.BackgroundTransparency = 1
-	hint.Text = "K to close   ·   element skins recolor your abilities; auras, trails and eyes fit any class"
+	hint.Text = "K to close   ·   every skin: pay Cash (earned in-game) or Robux   ·   auras, trails and eyes fit any class"
 	hint.TextColor3 = Color3.fromRGB(150, 145, 170)
 	hint.Font = Enum.Font.Gotham
 	hint.TextScaled = true
@@ -147,7 +152,7 @@ local function build()
 
 				local name = Instance.new("TextLabel")
 				name.Position = UDim2.new(0, 48, 0, 4)
-				name.Size = UDim2.new(0.55, 0, 0, 22)
+				name.Size = UDim2.new(0.5, 0, 0, 22)
 				name.BackgroundTransparency = 1
 				name.Text = skin.name .. (if skin.class then ("   ·   " .. skin.class) else "")
 				name.TextColor3 = Color3.fromRGB(235, 230, 245)
@@ -158,7 +163,7 @@ local function build()
 
 				local desc = Instance.new("TextLabel")
 				desc.Position = UDim2.new(0, 48, 0, 27)
-				desc.Size = UDim2.new(0.55, 0, 0, 18)
+				desc.Size = UDim2.new(0.5, 0, 0, 18)
 				desc.BackgroundTransparency = 1
 				desc.Text = skin.description
 				desc.TextColor3 = Color3.fromRGB(160, 155, 180)
@@ -181,13 +186,22 @@ local function build()
 				bc.CornerRadius = UDim.new(0, 8)
 				bc.Parent = btn
 
-				btn.MouseButton1Click:Connect(function()
-					if not profile then
-						return
-					end
-					local owned = profile.cosmetics and profile.cosmetics[skin.id] == true
-					local remote = if owned then Net.get("EquipSkin") else Net.get("BuySkin")
-					local result = remote:InvokeServer(skin.id)
+				-- Second price: in-game Cash, sits left of the Robux button.
+				local cashBtn = Instance.new("TextButton")
+				cashBtn.AnchorPoint = Vector2.new(1, 0.5)
+				cashBtn.Position = UDim2.new(0.78, -16, 0.5, 0)
+				cashBtn.Size = UDim2.new(0.16, 0, 0, 36)
+				cashBtn.BackgroundColor3 = Color3.fromRGB(40, 110, 70)
+				cashBtn.TextColor3 = Color3.fromRGB(245, 240, 250)
+				cashBtn.Font = Enum.Font.GothamBold
+				cashBtn.TextScaled = true
+				cashBtn.Text = ""
+				cashBtn.Parent = row
+				local cc = Instance.new("UICorner")
+				cc.CornerRadius = UDim.new(0, 8)
+				cc.Parent = cashBtn
+
+				local function handle(result: any)
 					if type(result) == "table" then
 						if result.ok then
 							if result.prompted then
@@ -199,8 +213,24 @@ local function build()
 							onMessage(result.err or "store error")
 						end
 					end
+				end
+				btn.MouseButton1Click:Connect(function()
+					if not profile then
+						return
+					end
+					local owned = profile.cosmetics and profile.cosmetics[skin.id] == true
+					if owned then
+						handle(Net.get("EquipSkin"):InvokeServer(skin.id))
+					else
+						handle(Net.get("BuySkin"):InvokeServer(skin.id, "robux"))
+					end
 				end)
-				rows[skin.id] = { button = btn, price = name }
+				cashBtn.MouseButton1Click:Connect(function()
+					if profile then
+						handle(Net.get("BuySkin"):InvokeServer(skin.id, "cash"))
+					end
+				end)
+				rows[skin.id] = { button = btn, cash = cashBtn }
 			end
 		end
 	end

@@ -36,6 +36,7 @@ local ATTACK_INTERVAL = 1.2
 local WALK_SPEED = 13
 local RESPAWN_SECONDS = 8
 local SHARD_REWARD = 150
+local CASH_REWARD = 40 -- top of the roll; a kill pays 60–100% of this
 
 -- Roblox's public default R15 animations.
 local ANIM_IDLE = "rbxassetid://507766666"
@@ -167,6 +168,7 @@ local function spawnMook(index: number, home: Vector3)
 	local archetype = Enemies.get("GangMook")
 	model.Name = ("Gang Member %d"):format(index)
 	model:SetAttribute("ShardReward", SHARD_REWARD)
+	model:SetAttribute("CashReward", CASH_REWARD)
 	model:SetAttribute("Zone", "ClubBeach")
 	model:SetAttribute("Archetype", archetype and archetype.id or "GangMook")
 

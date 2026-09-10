@@ -180,7 +180,7 @@ function HUD.update(profile: any)
 		profile.boxesInRank,
 		SoulRanks.BOXES_PER_RANK
 	)
-	shardLabel.Text = ("Shards: %d"):format(profile.soulShards)
+	shardLabel.Text = ("Shards: %d   ·   $%d"):format(profile.soulShards, profile.cash or 0)
 
 	local class = profile.class and Classes.get(profile.class)
 	currentClass = profile.class

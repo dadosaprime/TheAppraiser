@@ -55,7 +55,8 @@ end
 function StoreService.init()
 	MarketplaceService.ProcessReceipt = processReceipt
 
-	Net.get("BuySkin").OnServerInvoke = function(player, skinId)
+	-- method: "cash" spends in-game Cash; anything else is the Robux path.
+	Net.get("BuySkin").OnServerInvoke = function(player, skinId, method)
 		if type(skinId) ~= "string" then
 			return { ok = false, err = "bad skin" }
 		end
@@ -69,6 +70,15 @@ function StoreService.init()
 		end
 		if profile.cosmetics[skinId] then
 			return { ok = true, owned = true }
+		end
+		if method == "cash" then
+			if profile.cash < skin.cashPrice then
+				return { ok = false, err = ("Need $%d — you have $%d"):format(skin.cashPrice, profile.cash) }
+			end
+			profile.cash -= skin.cashPrice
+			DataService.markDirty(player)
+			grant(player, skinId)
+			return { ok = true, granted = true, spent = skin.cashPrice }
 		end
 		if skin.devProductId > 0 and not GameConfig.Playtest.FreeSkins then
 			MarketplaceService:PromptProductPurchase(player, skin.devProductId)

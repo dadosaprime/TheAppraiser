@@ -87,6 +87,7 @@ Net.get("ChooseClass").OnServerInvoke = function(player, classId)
 		end
 		-- Playtest: seed shards so progression can be exercised immediately.
 		profile.soulShards += GameConfig.Playtest.StartingShards
+		profile.cash += GameConfig.Playtest.StartingCash
 		DataService.markDirty(player)
 		pushProfile(player, profile)
 		return { ok = true }

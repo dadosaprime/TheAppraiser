@@ -31,6 +31,17 @@ function ProgressionService.awardShards(player: Player, amount: number)
 	ProgressionService._push(player, profile)
 end
 
+-- Award Cash (enemy drops, quests). Cash buys antique-shop goods and skins.
+function ProgressionService.awardCash(player: Player, amount: number)
+	local profile = DataService.get(player)
+	if not profile or amount <= 0 then
+		return
+	end
+	profile.cash += amount
+	DataService.markDirty(player)
+	ProgressionService._push(player, profile)
+end
+
 -- Buy the next Soul-rank box.
 function ProgressionService.purchaseBox(player: Player): Result
 	local profile = DataService.get(player)
