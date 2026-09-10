@@ -24,6 +24,7 @@ SoulService.SHIFT_REGEN_HP = 3 -- health per second while the Werewolf is shifte
 local soul: { [Player]: number } = {}
 local locked: { [Player]: number } = {} -- Soul set aside while shifted (grey on the bar)
 local lockRank: { [Player]: number } = {}
+local lockKind: { [Player]: string } = {} -- "shift" | "aegis" | "vanish"
 local lastPushed: { [Player]: string } = {}
 
 local function maxFor(player: Player): number
@@ -48,22 +49,25 @@ local function capFor(player: Player): number
 	return math.max(maxFor(player) - (locked[player] or 0), 0)
 end
 
--- Werewolf shift: set `amount` of the pool aside. It goes grey, can't be spent,
--- and won't refill until the form is dropped. Soul above the new cap is pushed
--- down into the lock — that's the price of the buff.
-function SoulService.lock(player: Player, amount: number, rank: number)
+-- A held form (Werewolf shift, Witch flame shield, Immortal vanish) sets
+-- `amount` of the pool aside. It goes grey, can't be spent, and won't refill
+-- until the form is dropped. Soul above the new cap is pushed down into the
+-- lock — that's the price of the buff. One form at a time.
+function SoulService.lock(player: Player, amount: number, rank: number, kind: string)
 	locked[player] = math.clamp(amount, 0, maxFor(player))
 	lockRank[player] = rank
+	lockKind[player] = kind
 	soul[player] = math.min(soul[player] or 0, capFor(player))
 end
 
 function SoulService.unlock(player: Player)
 	locked[player] = nil
 	lockRank[player] = nil
+	lockKind[player] = nil
 end
 
-function SoulService.isShifted(player: Player): boolean
-	return (locked[player] or 0) > 0
+function SoulService.form(player: Player): string?
+	return if (locked[player] or 0) > 0 then lockKind[player] else nil
 end
 
 -- Spend `cost`; returns false (and spends nothing) if short.
@@ -91,11 +95,13 @@ local function push(player: Player)
 	local m = maxFor(player)
 	local l = math.floor((locked[player] or 0) + 0.5)
 	local key = s .. "/" .. m .. "/" .. l
-	if lastPushed[player] == key then
+	local form = if l > 0 then (lockKind[player] or "form") else ""
+	local key2 = key .. "/" .. form
+	if lastPushed[player] == key2 then
 		return
 	end
-	lastPushed[player] = key
-	Net.get("StatusUpdated"):FireClient(player, { soul = s, soulMax = m, soulLocked = l, shifted = l > 0 })
+	lastPushed[player] = key2
+	Net.get("StatusUpdated"):FireClient(player, { soul = s, soulMax = m, soulLocked = l, form = form })
 end
 
 function SoulService.init()
@@ -103,6 +109,7 @@ function SoulService.init()
 		player.CharacterAdded:Connect(function()
 			locked[player] = nil -- a new body holds no form
 			lockRank[player] = nil
+			lockKind[player] = nil
 			soul[player] = maxFor(player) -- respawn with a full pool
 			lastPushed[player] = nil
 		end)
@@ -115,6 +122,7 @@ function SoulService.init()
 		soul[player] = nil
 		locked[player] = nil
 		lockRank[player] = nil
+		lockKind[player] = nil
 		lastPushed[player] = nil
 	end)
 
@@ -129,8 +137,8 @@ function SoulService.init()
 			else
 				soul[player] = math.min(cur + SoulService.REGEN_PER_SECOND * dt, cap)
 			end
-			-- The beast heals while the form holds.
-			if (locked[player] or 0) > 0 then
+			-- The beast heals while the form holds (wolf only).
+			if (locked[player] or 0) > 0 and lockKind[player] == "shift" then
 				local c = player.Character
 				local h = c and c:FindFirstChildOfClass("Humanoid")
 				if h and h.Health > 0 then

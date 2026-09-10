@@ -106,6 +106,9 @@ local function targetsInRadius(center: Vector3, radius: number, exclude: Model?)
 	return out
 end
 
+-- ── Flame Shield state (Witch Aegis) — held form; see AbilityEffects.WitchfireAegis
+local aegisRank: { [Model]: number } = {}
+
 -- ── Parry state (Immortal Riposte) ──────────────────────────────────────────
 -- "The most important number in the game": GameConfig.Combat.ParryWindowMs.
 local parryUntil: { [Model]: number } = {}
@@ -140,6 +143,23 @@ local function hit(target: Model, amount: number, dmgType: string, attacker: Mod
 			end
 		end
 		return 0
+	end
+
+	-- Flame Shield: the held form burns whoever touches it and blunts the hit.
+	local aegis = aegisRank[target]
+	if aegis then
+		amount *= 0.7
+		local ahum = attacker:FindFirstChildOfClass("Humanoid")
+		local ap = modelPos(attacker)
+		if ahum and ahum.Health > 0 and attacker ~= target then
+			local burn = if dmgType == "Physical" then 8 + 3 * aegis else (if aegis >= 5 then amount * 0.3 else 0)
+			if burn > 0 then
+				ahum:TakeDamage(burn)
+				if ap then
+					Effects.damageNumber(ap, burn, FIRE)
+				end
+			end
+		end
 	end
 
 	local applied = amount
@@ -282,6 +302,54 @@ AbilityEffects.Conflagration = function(ctx)
 		end
 	end)
 	return 8 - 0.5 * ctx.rank
+end
+
+AbilityEffects.WitchfireAegis = function(ctx)
+	if isTimed(ctx.character, "aegis") then
+		clearTimed(ctx.character, "aegis") -- drop the shield
+		return 1
+	end
+	local lockAmount = math.floor(SoulService.max(ctx.player) * (if ctx.rank >= 5 then 0.25 else 0.35) + 0.5)
+	if SoulService.get(ctx.player) < lockAmount then
+		return nil, ("Need %d Soul to hold the shield"):format(lockAmount)
+	end
+	SoulService.lock(ctx.player, lockAmount, ctx.rank, "aegis")
+	Effects.animate(ctx.character, "roar", 1.2)
+	aegisRank[ctx.character] = ctx.rank
+
+	-- A ring of witchfire around the body.
+	local ring = Instance.new("Part")
+	ring.Name = "Witchfire"
+	ring.Shape = Enum.PartType.Ball
+	ring.Size = Vector3.new(7.5, 7.5, 7.5)
+	ring.Material = Enum.Material.Neon
+	ring.Color = FIRE
+	ring.Transparency = 0.72
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.Massless = true
+	ring.CastShadow = false
+	ring.CFrame = ctx.root.CFrame
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = ctx.root
+	weld.Part1 = ring
+	weld.Parent = ring
+	local light = Instance.new("PointLight")
+	light.Color = FIRE
+	light.Brightness = 2.2
+	light.Range = 16
+	light.Shadows = false
+	light.Parent = ring
+	ring.Parent = ctx.character
+	Effects.burst(ctx.root.Position, FIRE, 5, 0.4)
+
+	setTimed(ctx, "aegis", math.huge, function()
+		SoulService.unlock(ctx.player)
+		aegisRank[ctx.character] = nil
+		ring:Destroy()
+	end)
+	return 1
 end
 
 AbilityEffects.Widdershins = function(ctx)
@@ -513,7 +581,7 @@ AbilityEffects.TheTurning = function(ctx)
 	if SoulService.get(ctx.player) < lockAmount then
 		return nil, ("Need %d Soul to hold the form"):format(lockAmount)
 	end
-	SoulService.lock(ctx.player, lockAmount, ctx.rank)
+	SoulService.lock(ctx.player, lockAmount, ctx.rank, "shift")
 	Effects.animate(ctx.character, "roar", 1.0)
 	local hum = ctx.humanoid
 	local rank = ctx.rank
@@ -851,17 +919,24 @@ AbilityEffects.Stillness = function(ctx)
 		clearTimed(ctx.character, "vanish")
 		return 1
 	end
+	-- Stealth is a held form: lock a slice of Soul for as long as you stay hidden.
+	local lockAmount = math.floor(SoulService.max(ctx.player) * (if ctx.rank >= 5 then 0.25 else 0.3) + 0.5)
+	if SoulService.get(ctx.player) < lockAmount then
+		return nil, ("Need %d Soul to hold the stillness"):format(lockAmount)
+	end
+	SoulService.lock(ctx.player, lockAmount, ctx.rank, "vanish")
 	local hum = ctx.humanoid
 	local speed0 = hum.WalkSpeed
 	local restore = setPartTransparency(ctx.character, 0.85)
 	hum.WalkSpeed = if ctx.rank >= 5 then 16 elseif ctx.rank >= 2 then 13 else 10
-	setTimed(ctx, "vanish", 6 + 2 * ctx.rank, function()
+	setTimed(ctx, "vanish", math.huge, function()
+		SoulService.unlock(ctx.player)
 		restore()
 		if hum.Parent then
 			hum.WalkSpeed = speed0
 		end
 	end)
-	return 8
+	return 1
 end
 
 AbilityEffects.FirstCut = function(ctx)
@@ -883,6 +958,7 @@ Players.PlayerRemoving:Connect(function(player)
 		timed[player.Character] = nil
 		parryUntil[player.Character] = nil
 		parryRank[player.Character] = nil
+		aegisRank[player.Character] = nil
 	end
 end)
 
