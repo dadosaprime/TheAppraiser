@@ -15,6 +15,7 @@ local Classes = require(Shared.Classes)
 local PerkTrees = require(Shared.PerkTrees)
 
 local DataService = require(script.Parent.DataService)
+local AbilityEffects = require(script.Parent.AbilityEffects)
 
 local AbilityService = {}
 
@@ -106,19 +107,29 @@ function AbilityService.activate(player: Player, slot: number, target: any?): Ac
 end
 
 -- Effect dispatcher. Returns an optional cooldown override.
--- This is where each ability wires into CombatService, movement, and VFX. For now
--- it logs; fill these in per-tree as systems come online. Kept as one function so
--- the whole ability surface is visible in one place.
-function AbilityService.runEffect(player: Player, treeId: string, rank: number, _target: any?): number?
+-- Real effects live in AbilityEffects.luau keyed by tree id; trees without an
+-- entry yet fall through to a log line so the button still "works".
+function AbilityService.runEffect(player: Player, treeId: string, rank: number, target: any?): number?
 	local tree = PerkTrees.get(treeId)
 	if not tree then
 		return nil
 	end
+	local effect = AbilityEffects[treeId]
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if effect and character and humanoid and root and root:IsA("BasePart") and humanoid.Health > 0 then
+		local aim = if typeof(target) == "Vector3" and target.Magnitude > 0 then target.Unit else root.CFrame.LookVector
+		return effect({
+			player = player,
+			character = character,
+			humanoid = humanoid,
+			root = root,
+			rank = rank,
+			aim = aim,
+		})
+	end
 	local rankDef = tree.ranks[rank]
-	-- TODO: replace with real effects (projectiles, dashes, shields, revives...).
-	-- Example shape for a damaging basic attack:
-	--   local dmg = baseDamageFor(treeId, rank)
-	--   CombatService.applyDamage(targetChar, dmg, damageTypeFor(treeId), playerChar)
 	print(("[Ability] %s used %s (%s) rank %d — %s"):format(
 		player.Name,
 		tree.ability,

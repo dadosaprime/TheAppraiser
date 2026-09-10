@@ -8,6 +8,7 @@
 --   B            buy the next Soul-Rank box (Soul Shards)
 
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local Net = require(Shared.Net)
@@ -82,8 +83,9 @@ function HotbarController.start()
 			if shiftHeld() then
 				task.spawn(purchasePerkForSlot, slot)
 			else
-				-- Target resolution (mouse hit / lock-on) can be added here later.
-				activate:FireServer({ slot = slot, target = nil })
+				-- Aim where the camera looks; the server validates and normalizes it.
+				local cam = Workspace.CurrentCamera
+				activate:FireServer({ slot = slot, target = if cam then cam.CFrame.LookVector else nil })
 			end
 		elseif input.KeyCode == Enum.KeyCode.B then
 			task.spawn(purchaseBox)
