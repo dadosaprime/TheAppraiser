@@ -5,6 +5,7 @@
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local Net = require(Shared.Net)
+local Classes = require(Shared.Classes)
 
 local HUD = require(script.HUD)
 local HotbarController = require(script.HotbarController)
@@ -30,6 +31,8 @@ local function applyProfile(profile: any)
 	HUD.update(profile)
 	StoreUI.setProfile(profile)
 	HotbarController.currentClass = profile.class
+	local cls = profile.class and Classes.get(profile.class)
+	HotbarController.attackSlot = if cls then table.find(cls.trees, cls.attackTree) else nil
 	if profile.class == nil then
 		ClassSelect.show(function(id)
 			HUD.toast(("You are a %s."):format(id))

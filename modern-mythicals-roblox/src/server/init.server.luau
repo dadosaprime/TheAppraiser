@@ -5,6 +5,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local Net = require(Shared.Net)
@@ -110,10 +111,21 @@ Net.get("PurchasePerk").OnServerInvoke = function(player, treeId)
 	return ProgressionService.purchasePerk(player, treeId)
 end
 
+-- A press that reaches us late is thrown away, never run later: one click is
+-- one activation, and nothing is stored. Also one request at a time per player.
+local STALE_SECONDS = 0.35
+local activating: { [Player]: boolean } = {}
 Net.get("ActivateAbility").OnServerEvent:Connect(function(player, payload)
 	if type(payload) ~= "table" then
 		return
 	end
+	if type(payload.t) == "number" and Workspace:GetServerTimeNow() - payload.t > STALE_SECONDS then
+		return -- arrived too late; the moment has passed
+	end
+	if activating[player] then
+		return
+	end
+	activating[player] = true
 	local slot = payload.slot
 	if payload.attack == true then
 		-- Left-click: the class's basic attack, whichever slot holds it.
@@ -122,9 +134,11 @@ Net.get("ActivateAbility").OnServerEvent:Connect(function(player, payload)
 		slot = if class then table.find(class.trees, class.attackTree) else nil
 	end
 	if type(slot) ~= "number" then
+		activating[player] = nil
 		return
 	end
 	local result = AbilityService.activate(player, slot, payload.aimPoint)
+	activating[player] = nil
 	Net.get("AbilityFeedback"):FireClient(player, {
 		slot = slot,
 		ok = result.ok,
@@ -167,6 +181,7 @@ end
 Players.PlayerAdded:Connect(onPlayer)
 Players.PlayerRemoving:Connect(function(player)
 	AbilityService.clearPlayer(player)
+	activating[player] = nil
 end)
 for _, player in Players:GetPlayers() do
 	onPlayer(player)

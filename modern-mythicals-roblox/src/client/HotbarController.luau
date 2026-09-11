@@ -20,6 +20,8 @@ local HotbarController = {}
 
 -- Set by the client bootstrap from the latest profile.
 HotbarController.currentClass = nil :: string?
+-- Slot that holds the class's basic attack (for the local cooldown mirror).
+HotbarController.attackSlot = nil :: number?
 
 -- Called with (slot, feedback) so the HUD can flash cooldowns/errors.
 HotbarController.onFeedback = function(_slot: number, _feedback: any) end
@@ -43,6 +45,28 @@ local function aimPoint(): Vector3?
 		mouse.TargetFilter = fx
 	end
 	return mouse.Hit.Position
+end
+
+-- One press is one request. A slot on cooldown (mirrored from the server's
+-- last answer) is not sent at all, and a press is never queued: if the last
+-- request has not been answered yet, the new press is dropped. Every request
+-- carries the synced clock so the server can discard anything that arrives
+-- late instead of running a backlog after the fight is over.
+local readyAt: { [number]: number } = {}
+local inFlight = false
+local inFlightSince = 0
+
+local function canSend(slot: number?): boolean
+	local now = Workspace:GetServerTimeNow()
+	if inFlight and now - inFlightSince < 0.5 then
+		return false
+	end
+	if slot and (readyAt[slot] or 0) > now then
+		return false
+	end
+	inFlight = true
+	inFlightSince = now
+	return true
 end
 
 local function shiftHeld(): boolean
@@ -93,16 +117,18 @@ function HotbarController.start()
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			-- Left click = the class's basic attack (server resolves which slot).
-			activate:FireServer({ attack = true, aimPoint = aimPoint() })
+			if canSend(HotbarController.attackSlot) then
+				activate:FireServer({ attack = true, aimPoint = aimPoint(), t = Workspace:GetServerTimeNow() })
+			end
 			return
 		end
 		local slot = KEY_TO_SLOT[input.KeyCode]
 		if slot then
 			if shiftHeld() then
 				task.spawn(purchasePerkForSlot, slot)
-			else
+			elseif canSend(slot) then
 				-- Aim at the point under the cursor; the server validates it.
-				activate:FireServer({ slot = slot, aimPoint = aimPoint() })
+				activate:FireServer({ slot = slot, aimPoint = aimPoint(), t = Workspace:GetServerTimeNow() })
 			end
 		elseif input.KeyCode == Enum.KeyCode.B then
 			task.spawn(purchaseBox)
@@ -110,7 +136,11 @@ function HotbarController.start()
 	end)
 
 	Net.get("AbilityFeedback").OnClientEvent:Connect(function(feedback)
+		inFlight = false
 		if type(feedback) == "table" and feedback.slot then
+			if type(feedback.cooldown) == "number" and feedback.cooldown > 0 then
+				readyAt[feedback.slot] = Workspace:GetServerTimeNow() + feedback.cooldown
+			end
 			HotbarController.onFeedback(feedback.slot, feedback)
 		end
 	end)

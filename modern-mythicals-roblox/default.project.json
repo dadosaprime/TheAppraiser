@@ -37,16 +37,8 @@
 				"$className": "Part",
 				"$properties": {
 					"Anchored": true,
-					"Size": [
-						2400,
-						16,
-						1400
-					],
-					"Position": [
-						900,
-						-8,
-						0
-					],
+					"Size": [2048, 16, 1400],
+					"CFrame": [900, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
 					"Color": [
 						0.18,
 						0.18,
