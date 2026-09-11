@@ -1,0 +1,33 @@
+# Rojo / build output
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+build/
+out/
+
+# Toolchain
+/.rokit/
+~/.rokit/
+
+# Wally packages (installed via `wally install`)
+/Packages/
+/ServerPackages/
+/DevPackages/
+wally.lock
+
+# Python (city generator)
+tools/city_generator/__pycache__/
+tools/city_generator/.venv/
+*.pyc
+.cache/
+osm_cache/
+
+# Secrets — never commit Open Cloud API keys
+.env
+*.apikey
+secrets.json
+
+# Editor
+.vscode/
+.DS_Store

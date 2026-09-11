@@ -1,0 +1,98 @@
+name: CI
+
+# Headless build pipeline, modeled on Roblox/place-ci-cd-demo:
+#   lint → format check → generate city → Rojo build → (publish, gated).
+# Publishing is guarded behind repository secrets so forks and PRs never deploy.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "modern-mythicals-roblox/**"
+  pull_request:
+    paths:
+      - "modern-mythicals-roblox/**"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: modern-mythicals-roblox
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rokit toolchain
+        uses: CompeyDev/setup-rokit@v0.1.2
+        with:
+          manifest-path: modern-mythicals-roblox/rokit.toml
+
+      - name: Format check (StyLua)
+        run: stylua --check src
+
+      - name: Lint (Selene)
+        run: selene src
+
+      - name: Install Luau packages (Wally)
+        run: wally install
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate Miami map
+        working-directory: modern-mythicals-roblox/tools/city_generator
+        run: |
+          pip install -r requirements.txt
+          python generate.py --config config/miami_club_district.json --out ../../map/GeneratedCity.rbxmx
+
+      - name: Rojo build
+        run: rojo build -o build/ModernMythicals.rbxl
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: place-files
+          path: |
+            modern-mythicals-roblox/build/ModernMythicals.rbxl
+            modern-mythicals-roblox/map/GeneratedCity.rbxmx
+
+  publish:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    # Only on main, and only when the Open Cloud secrets exist.
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rokit toolchain
+        uses: CompeyDev/setup-rokit@v0.1.2
+        with:
+          manifest-path: modern-mythicals-roblox/rokit.toml
+
+      - name: Install Luau packages (Wally)
+        run: wally install
+
+      - name: Rojo build
+        run: rojo build -o build/ModernMythicals.rbxl
+
+      - name: Publish to Roblox via Open Cloud
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_OPEN_CLOUD_API_KEY }}
+          UNIVERSE_ID: ${{ secrets.ROBLOX_UNIVERSE_ID }}
+          PLACE_ID: ${{ secrets.ROBLOX_PLACE_ID }}
+        run: |
+          if [ -z "$ROBLOX_API_KEY" ] || [ -z "$UNIVERSE_ID" ] || [ -z "$PLACE_ID" ]; then
+            echo "Open Cloud secrets not set — skipping publish."
+            echo "Set ROBLOX_OPEN_CLOUD_API_KEY, ROBLOX_UNIVERSE_ID, ROBLOX_PLACE_ID to enable."
+            exit 0
+          fi
+          curl -sSf -X POST \
+            "https://apis.roblox.com/universes/v1/${UNIVERSE_ID}/places/${PLACE_ID}/versions?versionType=Published" \
+            -H "x-api-key: ${ROBLOX_API_KEY}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @build/ModernMythicals.rbxl
+          echo "Published place ${PLACE_ID}."

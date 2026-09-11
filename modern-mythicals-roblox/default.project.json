@@ -1,0 +1,158 @@
+{
+	"name": "ModernMythicals",
+	"globIgnorePaths": [
+		"**/*.spec.luau"
+	],
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"Shared": {
+				"$path": "src/shared"
+			}
+		},
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"Server": {
+				"$path": "src/server"
+			}
+		},
+		"StarterPlayer": {
+			"$className": "StarterPlayer",
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"Client": {
+					"$path": "src/client"
+				}
+			}
+		},
+		"Workspace": {
+			"$className": "Workspace",
+			"$properties": {
+				"StreamingEnabled": true,
+				"StreamingTargetRadius": 1024,
+				"FilteringEnabled": true
+			},
+			"Baseplate": {
+				"$className": "Part",
+				"$properties": {
+					"Anchored": true,
+					"Size": [2048, 16, 1400],
+					"CFrame": [900, -8, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+					"Color": [
+						0.18,
+						0.18,
+						0.22
+					],
+					"Material": "Concrete",
+					"TopSurface": "Smooth",
+					"BottomSurface": "Smooth"
+				}
+			},
+			"SpawnLocation": {
+				"$className": "SpawnLocation",
+				"$properties": {
+					"Anchored": true,
+					"Size": [
+						12,
+						1,
+						12
+					],
+					"Duration": 0,
+					"Neutral": true,
+					"CFrame": [
+						900,
+						0.5,
+						-60,
+						1,
+						0,
+						0,
+						0,
+						1,
+						0,
+						0,
+						0,
+						1
+					]
+				}
+			},
+			"Map": {
+				"$path": "map"
+			}
+		},
+		"Lighting": {
+			"$className": "Lighting",
+			"$properties": {
+				"Technology": "Future",
+				"ClockTime": 0,
+				"Brightness": 3,
+				"Ambient": [
+					0.5,
+					0.5,
+					0.62
+				],
+				"OutdoorAmbient": [
+					0.56,
+					0.6,
+					0.76
+				],
+				"ColorShift_Top": [
+					0.78,
+					0.7,
+					1.0
+				],
+				"GlobalShadows": true,
+				"ShadowSoftness": 0.2,
+				"EnvironmentDiffuseScale": 0.3,
+				"EnvironmentSpecularScale": 0.6,
+				"ExposureCompensation": 1.0
+			},
+			"Atmosphere": {
+				"$className": "Atmosphere",
+				"$properties": {
+					"Density": 0.16,
+					"Offset": 0.25,
+					"Color": [
+						0.7,
+						0.74,
+						0.9
+					],
+					"Decay": [
+						0.35,
+						0.38,
+						0.52
+					],
+					"Glare": 0.5,
+					"Haze": 2
+				}
+			},
+			"Bloom": {
+				"$className": "BloomEffect",
+				"$properties": {
+					"Intensity": 0.6,
+					"Size": 24,
+					"Threshold": 1.2
+				}
+			},
+			"ColorCorrection": {
+				"$className": "ColorCorrectionEffect",
+				"$properties": {
+					"Brightness": 0.06,
+					"Contrast": 0.15,
+					"Saturation": -0.05,
+					"TintColor": [
+						0.86,
+						0.88,
+						1.0
+					]
+				}
+			}
+		},
+		"SoundService": {
+			"$className": "SoundService",
+			"$properties": {
+				"RespectFilteringEnabled": true
+			}
+		}
+	}
+}
