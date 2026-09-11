@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local AssetService = game:GetService("AssetService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local InsertService = game:GetService("InsertService")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
@@ -427,6 +428,76 @@ local function shiftAsset(): (string?, number?)
 	return nil, nil
 end
 
+-- Ask Roblox what the configured id actually is. Avatar Shop items (a costume
+-- accessory, a body part, a head) can't be InsertService-loaded, but they CAN
+-- be worn through a HumanoidDescription — no ownership needed. Creator Store
+-- models can be loaded and morphed into. Bundles get their outfit description.
+-- Resolved once per server.
+type AssetPlan = { kind: string, id: number, accessoryType: Enum.AccessoryType?, layered: boolean?, slot: string?, name: string?, reason: string? }
+local ACCESSORY_TYPES: { [number]: { Enum.AccessoryType | boolean } } = {
+	[8] = { Enum.AccessoryType.Hat, false },
+	[41] = { Enum.AccessoryType.Hair, false },
+	[42] = { Enum.AccessoryType.Face, false },
+	[43] = { Enum.AccessoryType.Neck, false },
+	[44] = { Enum.AccessoryType.Shoulder, false },
+	[45] = { Enum.AccessoryType.Front, false },
+	[46] = { Enum.AccessoryType.Back, false },
+	[47] = { Enum.AccessoryType.Waist, false },
+	[64] = { Enum.AccessoryType.TShirt, true },
+	[65] = { Enum.AccessoryType.Shirt, true },
+	[66] = { Enum.AccessoryType.Pants, true },
+	[67] = { Enum.AccessoryType.Jacket, true },
+	[68] = { Enum.AccessoryType.Sweater, true },
+	[69] = { Enum.AccessoryType.Shorts, true },
+	[70] = { Enum.AccessoryType.LeftShoe, true },
+	[71] = { Enum.AccessoryType.RightShoe, true },
+	[72] = { Enum.AccessoryType.DressSkirt, true },
+	[76] = { Enum.AccessoryType.Eyebrow, true },
+	[77] = { Enum.AccessoryType.Eyelash, true },
+}
+local BODY_PART_SLOTS: { [number]: string } = {
+	[17] = "Head", [79] = "Head",
+	[27] = "Torso", [28] = "RightArm", [29] = "LeftArm", [30] = "LeftLeg", [31] = "RightLeg",
+}
+local planCache: { [number]: AssetPlan } = {}
+local function classifyAsset(id: number): AssetPlan
+	local cached = planCache[id]
+	if cached then
+		return cached
+	end
+	local plan: AssetPlan
+	local ok, info = pcall(function()
+		return MarketplaceService:GetProductInfo(id, Enum.InfoType.Asset)
+	end)
+	if ok and type(info) == "table" and info.AssetTypeId then
+		local t = info.AssetTypeId
+		local name = tostring(info.Name)
+		if t == 10 then
+			plan = { kind = "model", id = id, name = name }
+		elseif ACCESSORY_TYPES[t] then
+			local at = ACCESSORY_TYPES[t]
+			plan = { kind = "accessory", id = id, name = name, accessoryType = at[1] :: Enum.AccessoryType, layered = at[2] :: boolean }
+		elseif BODY_PART_SLOTS[t] then
+			plan = { kind = "bodypart", id = id, name = name, slot = BODY_PART_SLOTS[t] }
+		else
+			plan = { kind = "unknown", id = id, name = name, reason = ("asset type %d isn't wearable"):format(t) }
+		end
+	else
+		-- Not an asset id; maybe it's a bundle id.
+		local okB, bundle = pcall(function()
+			return AssetService:GetBundleDetailsAsync(id)
+		end)
+		if okB and type(bundle) == "table" then
+			plan = { kind = "bundle", id = id, name = tostring(bundle.Name) }
+		else
+			plan = { kind = "unknown", id = id, reason = "Roblox has no asset or bundle with this id: " .. tostring(info) }
+		end
+	end
+	planCache[id] = plan
+	print(("[Shift] asset %d → %s%s"):format(id, plan.kind, if plan.name then " (" .. plan.name .. ")" else ""), plan.reason or "")
+	return plan
+end
+
 -- Bundle → HumanoidDescription (fetched once per server, cloned per use).
 local bundleDescCache: { [number]: HumanoidDescription } = {}
 local function bundleDescription(bundleId: number): HumanoidDescription?
@@ -616,19 +687,33 @@ AbilityEffects.TheTurning = function(ctx)
 	-- A real werewolf avatar, if one is configured in AssetIds.
 	local kind, assetId = shiftAsset()
 	local wearAccessories: { Accessory }? = nil
+	local catalogItem: AssetPlan? = nil -- an Avatar Shop accessory / body part
+	local planNote = ""
 	if kind == "asset" and assetId then
-		local akind, payload = loadShiftAsset(assetId)
-		if akind == "rig" then
-			local cd = morphShift(ctx, payload :: Model)
-			if cd then
-				return cd
+		local plan = classifyAsset(assetId)
+		planNote = if plan.name then (" · " .. plan.name) else ""
+		if plan.kind == "model" then
+			local akind, payload = loadShiftAsset(assetId)
+			if akind == "rig" then
+				local cd = morphShift(ctx, payload :: Model)
+				if cd then
+					return cd
+				end
+				kind = nil
+			elseif akind == "accessories" then
+				wearAccessories = payload :: { Accessory }
+				kind = "accessories"
+			else
+				kind = nil -- fall back to the procedural beast
 			end
-			kind = nil
-		elseif akind == "accessories" then
-			wearAccessories = payload :: { Accessory }
-			kind = "accessories"
+		elseif plan.kind == "accessory" or plan.kind == "bodypart" then
+			catalogItem = plan
+			kind = "catalog"
+		elseif plan.kind == "bundle" then
+			kind = "bundle"
 		else
-			kind = nil -- fall back to the procedural beast
+			planNote = " · " .. (plan.reason or "unusable")
+			kind = nil
 		end
 	end
 
@@ -636,7 +721,7 @@ AbilityEffects.TheTurning = function(ctx)
 	-- strips clothing textures (which hide plain part recolors), sets fur color
 	-- on every limb, and scales the whole rig — bigger hitbox, the drawback.
 	local original: HumanoidDescription? = nil
-	local applied = pcall(function()
+	local applied, applyErr = pcall(function()
 		local desc = hum:GetAppliedDescription()
 		original = desc:Clone()
 		local target = desc
@@ -649,7 +734,23 @@ AbilityEffects.TheTurning = function(ctx)
 				kind = nil
 			end
 		end
-		if kind ~= "bundle" then
+		if catalogItem then
+			-- Wear the Avatar Shop item through the description.
+			if catalogItem.kind == "accessory" then
+				local list = target:GetAccessories(true)
+				table.insert(list, {
+					AssetId = catalogItem.id,
+					AccessoryType = catalogItem.accessoryType,
+					IsLayered = catalogItem.layered == true,
+					Order = #list + 1,
+				})
+				target:SetAccessories(list, true)
+			elseif catalogItem.slot then
+				(target :: any)[catalogItem.slot] = catalogItem.id
+			end
+		end
+		-- Fur recolor only when no real body is being worn (it would be hidden).
+		if kind ~= "bundle" and not (catalogItem and catalogItem.kind == "bodypart") then
 			target.HeadColor = FUR
 			target.TorsoColor = FUR
 			target.LeftArmColor = FUR
@@ -669,7 +770,7 @@ AbilityEffects.TheTurning = function(ctx)
 		hum:ApplyDescription(target)
 	end)
 	if not applied then
-		warn("[Shift] ApplyDescription failed for", ctx.player.Name, "— using recolor fallback")
+		warn("[Shift] ApplyDescription failed for", ctx.player.Name, "—", tostring(applyErr), "— using recolor fallback")
 	end
 	-- Costume accessories from the configured asset go on after the
 	-- description is applied (ApplyDescription would strip them otherwise).
@@ -689,9 +790,10 @@ AbilityEffects.TheTurning = function(ctx)
 	end
 	if GameConfig.Playtest.ShiftDiagnostics then
 		local how = if kind == "accessories" then ("costume · %d accessories"):format(#wornClones)
+			elseif kind == "catalog" then ("avatar shop %s"):format((catalogItem :: AssetPlan).kind)
 			elseif kind == "bundle" then "bundle"
 			else "procedural beast"
-		Net.get("Toast"):FireClient(ctx.player, ("Wolf form: %s%s"):format(how, if applied then "" else " (recolor fallback)"))
+		Net.get("Toast"):FireClient(ctx.player, ("Wolf form: %s%s%s"):format(how, planNote, if applied then "" else (" (recolor fallback: " .. tostring(applyErr) .. ")")))
 	end
 
 	-- Fallback for rigs without a description: scale values + recolor.
